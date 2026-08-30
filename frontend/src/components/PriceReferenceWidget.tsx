@@ -47,7 +47,18 @@ export function PriceReferenceWidget({ produto }: { produto: string }) {
               {brl(resultado.valorPorSaca!)}/saca
             </span>
           </div>
-          <p className="mt-1 font-body text-[11px] leading-snug text-tintaSuave">{resultado.fonte}</p>
+          <p className="mt-1 font-body text-[11px] leading-snug text-tintaSuave">
+            Fonte:{" "}
+            <a
+              href="https://cepea.org.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              title={resultado.fonte}
+              className="underline decoration-tintaSuave/40 underline-offset-2 hover:text-azul"
+            >
+              CEPEA
+            </a>
+          </p>
         </div>
       )}
     </div>
