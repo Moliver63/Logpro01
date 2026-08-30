@@ -116,3 +116,14 @@ export interface ResultadoCenario extends Cenario {
   margemPercentual: number;
   resultado: number;
 }
+
+export interface ResultadoReferenciaPreco {
+  aplicavel: boolean;
+  valorPorSaca?: number;
+  moeda?: "BRL";
+  cotacaoOrigemUsdPorBushel?: number;
+  taxaCambioUsdBrl?: number;
+  dataReferencia?: string;
+  fonte?: string;
+  pendencia?: string;
+}

@@ -34,3 +34,11 @@ export async function simularCenarios(
 ): Promise<{ cenarios: ResultadoCenario[]; melhorCenario: string }> {
   return post("/operations/simular", { operacao, cenarios });
 }
+
+export async function getReferenciaPreco(produto: string) {
+  const res = await fetch(`${BASE}/price-reference/${produto}`);
+  if (!res.ok) {
+    throw new Error(`Falha ao consultar referência de preço (${res.status})`);
+  }
+  return res.json() as Promise<import("../types").ResultadoReferenciaPreco>;
+}

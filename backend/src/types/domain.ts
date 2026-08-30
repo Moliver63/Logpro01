@@ -181,6 +181,19 @@ export interface ResultadoPisoMinimo {
   pendencia?: string;
 }
 
+/* ---------------- referência internacional de preço (Alpha Vantage / CBOT) ---------------- */
+
+export interface ResultadoReferenciaPreco {
+  aplicavel: boolean;
+  valorPorSaca?: number; // BRL, saca 60kg — convertido a partir do contrato futuro de Chicago
+  moeda?: "BRL";
+  cotacaoOrigemUsdPorBushel?: number;
+  taxaCambioUsdBrl?: number;
+  dataReferencia?: string;
+  fonte?: string;
+  pendencia?: string;
+}
+
 /* ---------------- deal_engine ---------------- */
 
 export interface LinhaCusto {

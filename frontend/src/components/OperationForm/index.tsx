@@ -1,5 +1,6 @@
 import type { FormState } from "./useOperationForm";
 import { Field, NumberField, TextField, SelectField, Card } from "../ui/Field";
+import { PriceReferenceWidget } from "../PriceReferenceWidget";
 
 const UFS = [
   "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT",
@@ -49,6 +50,7 @@ export function OperationForm({ form, set }: Props) {
               placeholder="38,00"
               step="0.01"
             />
+            <PriceReferenceWidget produto={form.produto} />
           </Field>
           <Field label="Peso por saca (kg)">
             <NumberField value={form.pesoPorSacaKg} onValueChange={(v) => set("pesoPorSacaKg", v)} />
