@@ -3,32 +3,21 @@
 @tailwind utilities;
 
 html {
-  background-color: #1b2420;
+  background-color: #0b1f3d;
 }
 
 body {
-  @apply bg-ledger text-tinta font-body antialiased;
+  @apply bg-papel text-tinta font-body antialiased;
 }
 
 ::selection {
-  background-color: #c9a24b;
-  color: #1b2420;
+  background-color: #02d5fd;
+  color: #0b1f3d;
 }
 
-/* foco visível — acessibilidade, não decoração */
 :focus-visible {
-  outline: 2px solid #4b6350;
+  outline: 2px solid #004cf7;
   outline-offset: 2px;
-}
-
-.ledger-rule {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent,
-    transparent 27px,
-    #dad5c2 27px,
-    #dad5c2 28px
-  );
 }
 
 @media (prefers-reduced-motion: reduce) {

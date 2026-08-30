@@ -13,8 +13,8 @@ interface Props {
 
 function BlockHeader({ n, titulo }: { n: string; titulo: string }) {
   return (
-    <div className="mb-4 flex items-baseline gap-3 border-b border-ledgerLine pb-2">
-      <span className="font-mono text-xs text-tintaSuave">{n}</span>
+    <div className="mb-4 flex items-baseline gap-3 border-b border-borda pb-2">
+      <span className="font-mono text-xs font-semibold text-azul">{n}</span>
       <h3 className="font-display text-lg font-medium text-tinta">{titulo}</h3>
     </div>
   );

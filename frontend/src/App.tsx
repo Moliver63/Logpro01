@@ -46,14 +46,19 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-ledger">
-      <header className="border-b border-ledgerLine bg-silo">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div className="flex items-baseline gap-3">
-            <span className="font-display text-2xl font-semibold tracking-tight text-grao">LogPro</span>
-            <span className="font-body text-xs uppercase tracking-widest text-ledger/50">
-              Motor de viabilidade de operações de grãos
-            </span>
+    <div className="min-h-screen bg-papel">
+      <header className="border-b border-navySoft bg-navy">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="LogPro" className="h-11 w-11" />
+            <div className="flex flex-col">
+              <span className="font-display text-xl font-extrabold leading-none tracking-tight text-white">
+                Log<span className="text-ciano">Pro</span>
+              </span>
+              <span className="mt-1 font-body text-[11px] uppercase tracking-widest text-white/50">
+                Gestão logística inteligente
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -72,7 +77,7 @@ export default function App() {
           <button
             onClick={handleCalcular}
             disabled={!pronto || calculando}
-            className="rounded-card border border-grao bg-grao px-6 py-3 font-body text-sm font-semibold uppercase tracking-wide text-silo transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-card bg-brand-gradient px-6 py-3 font-body text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-azul/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {calculando ? "Calculando…" : "Calcular viabilidade"}
           </button>
@@ -81,7 +86,7 @@ export default function App() {
               Preencha sacas, preços, origem e destino para calcular.
             </span>
           )}
-          {erro && <span className="font-body text-xs text-alerta">{erro}</span>}
+          {erro && <span className="font-body text-xs text-risco">{erro}</span>}
         </div>
 
         {resultado && (
@@ -115,7 +120,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mt-16 border-t border-ledgerLine py-6">
+      <footer className="mt-16 border-t border-borda py-6">
         <p className="mx-auto max-w-6xl px-6 font-body text-xs text-tintaSuave">
           LogPro MVP — motor de decisão comercial, não uma calculadora de impostos. Regras tributárias
           exibidas na memória de cálculo são de referência e requerem validação de especialista antes de

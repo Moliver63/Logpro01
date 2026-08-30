@@ -15,7 +15,7 @@ export function CalculationMemory({ resultado }: { resultado: ResultadoOperacao 
   const [aberto, setAberto] = useState(false);
 
   return (
-    <div className="rounded-card border border-ledgerLine">
+    <div className="rounded-card border border-borda">
       <button
         onClick={() => setAberto((v) => !v)}
         className="flex w-full items-center justify-between px-5 py-3.5 text-left"
@@ -25,7 +25,7 @@ export function CalculationMemory({ resultado }: { resultado: ResultadoOperacao 
       </button>
 
       {aberto && (
-        <div className="border-t border-ledgerLine px-5 py-4">
+        <div className="border-t border-borda px-5 py-4">
           <section className="mb-6">
             <h4 className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-tintaSuave">
               Tributos e fundos

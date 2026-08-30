@@ -6,7 +6,7 @@ const brl = (n: number) =>
 function LinhaResultado({ label, valor, destaque }: { label: string; valor: number; destaque?: boolean }) {
   return (
     <div
-      className={`flex items-baseline justify-between py-2 ${
+      className={`flex items-baseline justify-between border-b border-borda/60 py-2.5 last:border-0 ${
         destaque ? "font-semibold text-tinta" : "text-tintaSuave"
       }`}
     >
@@ -23,8 +23,8 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       {/* Status — o elemento de assinatura: ficha de pesagem/carimbo de terminal */}
       <div
-        className={`rounded-card border-2 p-6 ${
-          viavel ? "border-soja bg-soja/[0.06]" : "border-alerta bg-alerta/[0.06]"
+        className={`rounded-card border-2 bg-white p-6 shadow-sm shadow-navy/[0.04] ${
+          viavel ? "border-sucesso" : "border-risco"
         }`}
       >
         <div className="flex items-start justify-between">
@@ -34,8 +34,8 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
             </span>
             <div className="mt-1 flex items-baseline gap-3">
               <span
-                className={`font-display text-4xl font-semibold tabular-nums ${
-                  viavel ? "text-sojaDark" : "text-alerta"
+                className={`font-display text-4xl font-extrabold tabular-nums ${
+                  viavel ? "text-sucessoDark" : "text-risco"
                 }`}
               >
                 {brl(resultado.resultado.valor)}
@@ -46,23 +46,21 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
             </div>
           </div>
           <span
-            className={`rounded-card border px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-wider ${
-              viavel
-                ? "border-soja bg-soja text-ledger"
-                : "border-alerta bg-alerta text-ledger"
+            className={`rounded-card px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-wider text-white ${
+              viavel ? "bg-sucesso" : "bg-risco"
             }`}
           >
             {viavel ? "Operação viável" : "Operação não viável"}
           </span>
         </div>
 
-        <div className="ledger-rule mt-6 divide-y divide-transparent">
+        <div className="mt-6">
           <LinhaResultado label="Receita" valor={resultado.receitaTotal.valor} />
           <LinhaResultado label="Mercadoria" valor={-resultado.custoMercadoria.valor} />
           <LinhaResultado label="Frete" valor={-resultado.custoLogistico.valor} />
           <LinhaResultado label="Tributos e fundos" valor={-resultado.custoTributario.valor} />
           <LinhaResultado label="Comissões e outros custos" valor={-resultado.outrosCustos.valor} />
-          <div className="border-t border-ledgerLine" />
+          <div className="border-t border-navy/10 pt-1" />
           <LinhaResultado label="Custo total" valor={-resultado.custoTotal.valor} destaque />
           <LinhaResultado label="Resultado" valor={resultado.resultado.valor} destaque />
         </div>
@@ -78,8 +76,8 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
         </div>
 
         {resultado.pendenciasTributarias.length > 0 && (
-          <div className="rounded-card border border-grao bg-grao/10 p-4">
-            <span className="font-body text-xs font-semibold uppercase tracking-wide text-graoDark">
+          <div className="rounded-card border border-ciano/40 bg-ciano/10 p-4">
+            <span className="font-body text-xs font-semibold uppercase tracking-wide text-azulDark">
               Pendências tributárias
             </span>
             <ul className="mt-2 space-y-1.5">
@@ -98,7 +96,7 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
 
 function MetricCard({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="rounded-card border border-ledgerLine bg-[#F8F6EE] p-4">
+    <div className="rounded-card border border-borda bg-white p-4">
       <span className="block font-body text-xs uppercase tracking-wide text-tintaSuave">{label}</span>
       <span className="mt-1 block font-mono text-lg tabular-nums text-tinta">{valor}</span>
     </div>

@@ -1,40 +1,48 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Sistema de tokens do LogPro.
+ * Sistema de tokens do LogPro — extraído da logo oficial (caminhão + Z de
+ * velocidade + wordmark "LogPro").
  *
- * Direção: painel de operação de terminal graneleiro, não "app de fintech".
- * Paleta ancorada em grão e caderno de bordo, não no cliché cream+terracota:
- *   - "silo"   #1B2420  quase-preto esverdeado — fundo profundo, evoca silo/armazém à noite
- *   - "ledger" #F1EFE6  papel de caderno de bordo — fundo claro, levemente amarelado, não creme quente
- *   - "grao"   #C9A24B  âmbar de grão maduro — accent primário, usado com moderação
- *   - "soja"   #4B6350  verde soja/mato — accent secundário, status positivo
- *   - "alerta" #B4472A  terracota queimado escuro — reservado a "NÃO VIÁVEL" / erro, nunca decorativo
- *   - "tinta"  #232823  texto principal sobre papel
+ *   navy      #0B1F3D  navy profundo da cabine do caminhão — fundo do header, texto principal
+ *   navySoft  #16305A  navy um tom mais claro — cards escuros, hover
+ *   azul      #004CF7  azul elétrico do meio do "Z" e do "Pro" — accent primário, botões
+ *   ciano     #02D5FD  ciano do topo do "Z" — destaque, gradientes, links
+ *   papel     #F5F8FC  branco levemente azulado — fundo claro da aplicação
+ *   borda     #DCE6F2  linhas e bordas sobre o papel
+ *   tintaSuave #55708F texto secundário sobre o papel
+ *   sucesso   #16A34A  operação viável — mantido verde para não colidir com o azul da marca
+ *   risco     #DC2626  operação não viável / erro
  */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        silo: "#1B2420",
-        ledger: "#F1EFE6",
-        ledgerLine: "#DAD5C2",
-        grao: "#C9A24B",
-        graoDark: "#9C7A32",
-        soja: "#4B6350",
-        sojaDark: "#374A3B",
-        alerta: "#B4472A",
-        tinta: "#232823",
-        tintaSuave: "#5B6459",
+        navy: "#0B1F3D",
+        navySoft: "#16305A",
+        azul: "#004CF7",
+        azulDark: "#0039BD",
+        ciano: "#02D5FD",
+        papel: "#F5F8FC",
+        papelCard: "#FFFFFF",
+        borda: "#DCE6F2",
+        tinta: "#0B1F3D",
+        tintaSuave: "#55708F",
+        sucesso: "#16A34A",
+        sucessoDark: "#15803D",
+        risco: "#DC2626",
       },
       fontFamily: {
-        display: ["'Fraunces'", "serif"],
+        display: ["'Manrope'", "sans-serif"],
         body: ["'Inter'", "sans-serif"],
         mono: ["'IBM Plex Mono'", "monospace"],
       },
+      backgroundImage: {
+        "brand-gradient": "linear-gradient(135deg, #02D5FD 0%, #004CF7 100%)",
+      },
       borderRadius: {
-        card: "2px",
+        card: "10px",
       },
     },
   },

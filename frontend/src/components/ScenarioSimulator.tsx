@@ -37,13 +37,13 @@ export function ScenarioSimulator({ base, onSimular, resultados, melhorCenario, 
   const [cenarios] = useState<Cenario[]>(() => gerarVariações(base));
 
   return (
-    <div className="rounded-card border border-ledgerLine bg-[#F8F6EE] p-5">
+    <div className="rounded-card border border-borda bg-white p-5 shadow-sm shadow-navy/[0.03]">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-display text-lg font-medium text-tinta">Simulador de cenários</h3>
         <button
           onClick={() => onSimular(cenarios)}
           disabled={carregando}
-          className="rounded-card border border-soja bg-soja px-4 py-2 font-body text-sm font-medium text-ledger transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="rounded-card bg-brand-gradient px-4 py-2 font-body text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {carregando ? "Simulando…" : "Simular variações"}
         </button>
@@ -57,13 +57,13 @@ export function ScenarioSimulator({ base, onSimular, resultados, melhorCenario, 
             <div
               key={c.nome}
               className={`rounded-card border p-4 ${
-                ehMelhor ? "border-soja bg-soja/[0.08]" : "border-ledgerLine bg-white/50"
+                ehMelhor ? "border-azul bg-azul/[0.06]" : "border-borda bg-white"
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-body text-xs font-medium text-tintaSuave">{c.nome}</span>
                 {ehMelhor && (
-                  <span className="rounded-card bg-soja px-2 py-0.5 font-mono text-[10px] uppercase text-ledger">
+                  <span className="rounded-card bg-azul px-2 py-0.5 font-mono text-[10px] uppercase text-white">
                     melhor
                   </span>
                 )}
@@ -83,7 +83,7 @@ export function ScenarioSimulator({ base, onSimular, resultados, melhorCenario, 
                 </div>
               </dl>
               {r && (
-                <div className="mt-3 border-t border-ledgerLine pt-2">
+                <div className="mt-3 border-t border-borda pt-2">
                   <div className="flex justify-between font-mono text-sm font-semibold text-tinta">
                     <span>Margem</span>
                     <span>{r.margemPercentual.toFixed(2)}%</span>
