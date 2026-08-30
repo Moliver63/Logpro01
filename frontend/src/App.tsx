@@ -5,6 +5,7 @@ import { ResultDashboard } from "./components/ResultDashboard";
 import { CalculationMemory } from "./components/CalculationMemory";
 import { ScenarioSimulator } from "./components/ScenarioSimulator";
 import { ChatAssistant } from "./components/ChatAssistant";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { calcularOperacao, simularCenarios } from "./api/client";
 import type { ResultadoOperacao, ResultadoCenario, Cenario } from "./types";
 
@@ -12,7 +13,7 @@ type ModoEntrada = "formulario" | "chat";
 
 export default function App() {
   const { form, set, pronto, paraOperacaoInput } = useOperationForm();
-  const [modo, setModo] = useState<ModoEntrada>("formulario");
+  const [modo, setModo] = useState<ModoEntrada>("chat");
 
   const [resultado, setResultado] = useState<ResultadoOperacao | null>(null);
   const [calculando, setCalculando] = useState(false);
@@ -64,9 +65,12 @@ export default function App() {
               </span>
             </div>
           </div>
-          <span className="hidden font-mono text-[11px] uppercase tracking-widest text-white/40 sm:block">
-            Motor de viabilidade
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="hidden font-mono text-[11px] uppercase tracking-widest text-white/40 sm:block">
+              Motor de viabilidade
+            </span>
+            <SettingsPanel />
+          </div>
         </div>
       </header>
 
@@ -80,20 +84,31 @@ export default function App() {
           </div>
           <div className="flex shrink-0 rounded-card border border-borda bg-white p-1">
             <button
+              onClick={() => setModo("chat")}
+              className={`flex items-center gap-1.5 rounded-card px-3 py-1.5 font-body text-xs font-medium transition-all ${
+                modo === "chat"
+                  ? "bg-brand-gradient text-white shadow-sm shadow-azul/30"
+                  : "text-tintaSuave hover:text-tinta"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
+                <path
+                  d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Chat
+            </button>
+            <button
               onClick={() => setModo("formulario")}
               className={`rounded-card px-3 py-1.5 font-body text-xs font-medium transition-colors ${
                 modo === "formulario" ? "bg-azul text-white" : "text-tintaSuave hover:text-tinta"
               }`}
             >
               Formulário
-            </button>
-            <button
-              onClick={() => setModo("chat")}
-              className={`rounded-card px-3 py-1.5 font-body text-xs font-medium transition-colors ${
-                modo === "chat" ? "bg-azul text-white" : "text-tintaSuave hover:text-tinta"
-              }`}
-            >
-              Chat
             </button>
           </div>
         </div>
