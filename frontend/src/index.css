@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  background-color: #1b2420;
+}
+
+body {
+  @apply bg-ledger text-tinta font-body antialiased;
+}
+
+::selection {
+  background-color: #c9a24b;
+  color: #1b2420;
+}
+
+/* foco visível — acessibilidade, não decoração */
+:focus-visible {
+  outline: 2px solid #4b6350;
+  outline-offset: 2px;
+}
+
+.ledger-rule {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 27px,
+    #dad5c2 27px,
+    #dad5c2 28px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
