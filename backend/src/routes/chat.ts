@@ -6,6 +6,7 @@ import { operacaoInputSchema } from "./validation.js";
 import { executarCalculo } from "../services/calculoService.js";
 import { pesquisarReferenciaPreco } from "../services/precoReferenciaService.js";
 import { extrairDoTexto, descreverCamposFaltando } from "../services/extratorLocal.js";
+import { circuitoAberto, registrarFalha, registrarSucesso, statusCircuitos } from "../services/circuitBreaker.js";
 import type { ResultadoOperacao } from "../types/domain.js";
 
 export const chatRouter = Router();
@@ -313,26 +314,44 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
 
 /* ---------------- Rota ---------------- */
 
+/** GET /api/chat/status — diagnóstico dos circuitos, pra não precisar caçar log toda vez que um provedor cai. */
+chatRouter.get("/status", (_req, res) => {
+  res.json({
+    gemini: { configurado: !!process.env.GEMINI_API_KEY, modelo: MODELO_GEMINI, ...statusCircuitos().gemini },
+    groq: { configurado: !!process.env.GROQ_API_KEY, modelo: MODELO_GROQ, ...statusCircuitos().groq },
+  });
+});
+
 chatRouter.post("/", async (req, res) => {
   const mensagens: MensagemChat[] = Array.isArray(req.body?.mensagens) ? req.body.mensagens : [];
   if (mensagens.length === 0) {
     return res.status(400).json({ erro: "Nenhuma mensagem enviada." });
   }
 
-  if (process.env.GEMINI_API_KEY) {
+  if (process.env.GEMINI_API_KEY && !circuitoAberto("gemini")) {
     try {
-      return res.json(await tentarComGemini(mensagens));
+      const resultado = await tentarComGemini(mensagens);
+      registrarSucesso("gemini");
+      return res.json(resultado);
     } catch (erro) {
+      registrarFalha("gemini");
       console.error("Gemini indisponível, tentando Groq:", erro);
     }
+  } else if (process.env.GEMINI_API_KEY) {
+    console.log("Gemini com circuito aberto (falhou recentemente) — pulando direto pro Groq, sem gastar tempo tentando de novo.");
   }
 
-  if (process.env.GROQ_API_KEY) {
+  if (process.env.GROQ_API_KEY && !circuitoAberto("groq")) {
     try {
-      return res.json(await tentarComGroq(mensagens));
+      const resultado = await tentarComGroq(mensagens);
+      registrarSucesso("groq");
+      return res.json(resultado);
     } catch (erro) {
+      registrarFalha("groq");
       console.error("Groq indisponível, caindo pro extrator local:", erro);
     }
+  } else if (process.env.GROQ_API_KEY) {
+    console.log("Groq com circuito aberto (falhou recentemente) — pulando direto pro extrator local.");
   }
 
   try {
