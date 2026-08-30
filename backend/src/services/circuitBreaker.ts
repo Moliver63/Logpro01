@@ -34,11 +34,11 @@ export function circuitoAberto(provedor: string): boolean {
   return Date.now() < estado.abertoAte;
 }
 
-/** Chamar quando um provedor falha com erro temporário (503/429/sobrecarga). */
-export function registrarFalha(provedor: string): void {
+/** Chamar quando um provedor falha com erro temporário (503/429/sobrecarga). Se `cooldownMsForcado` for passado, ignora o cálculo exponencial e usa esse valor — usado pra erro de cota diária esgotada, que precisa de um cooldown bem mais longo que sobrecarga passageira. */
+export function registrarFalha(provedor: string, cooldownMsForcado?: number): void {
   const atual = estados.get(provedor) ?? { abertoAte: 0, falhasConsecutivas: 0 };
   const falhasConsecutivas = atual.falhasConsecutivas + 1;
-  const cooldown = Math.min(COOLDOWN_BASE_MS * 2 ** (falhasConsecutivas - 1), COOLDOWN_MAX_MS);
+  const cooldown = cooldownMsForcado ?? Math.min(COOLDOWN_BASE_MS * 2 ** (falhasConsecutivas - 1), COOLDOWN_MAX_MS);
   estados.set(provedor, { abertoAte: Date.now() + cooldown, falhasConsecutivas });
 }
 

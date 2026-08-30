@@ -109,6 +109,20 @@ function erroEhTemporario(erro: unknown): boolean {
   );
 }
 
+/**
+ * Cota diária esgotada (ex: "20 requests/day" no free tier) é diferente de
+ * sobrecarga passageira — não adianta tentar de novo em 45s, só volta a
+ * funcionar depois que a cota resetar. Detecta isso separadamente pra abrir
+ * o circuito por horas, não minutos, e não desperdiçar tentativa nenhuma
+ * enquanto isso.
+ */
+function erroEhCotaDiariaEsgotada(erro: unknown): boolean {
+  const texto = String((erro as { message?: string })?.message ?? erro);
+  return texto.includes("RESOURCE_EXHAUSTED") || texto.includes("exceeded your current quota");
+}
+
+const COOLDOWN_COTA_DIARIA_MS = 3 * 60 * 60_000; // 3h — não sabemos o horário exato de reset da cota, usa uma janela conservadora
+
 /* ---------------- Provedor 1: Gemini ---------------- */
 
 async function chamarGeminiComRetry(historico: Content[], tentativas = 3): Promise<GenerateContentResponse> {
@@ -334,7 +348,7 @@ chatRouter.post("/", async (req, res) => {
       registrarSucesso("gemini");
       return res.json(resultado);
     } catch (erro) {
-      registrarFalha("gemini");
+      registrarFalha("gemini", erroEhCotaDiariaEsgotada(erro) ? COOLDOWN_COTA_DIARIA_MS : undefined);
       console.error("Gemini indisponível, tentando Groq:", erro);
     }
   } else if (process.env.GEMINI_API_KEY) {
@@ -347,7 +361,7 @@ chatRouter.post("/", async (req, res) => {
       registrarSucesso("groq");
       return res.json(resultado);
     } catch (erro) {
-      registrarFalha("groq");
+      registrarFalha("groq", erroEhCotaDiariaEsgotada(erro) ? COOLDOWN_COTA_DIARIA_MS : undefined);
       console.error("Groq indisponível, caindo pro extrator local:", erro);
     }
   } else if (process.env.GROQ_API_KEY) {

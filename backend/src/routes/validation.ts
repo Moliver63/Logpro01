@@ -28,16 +28,19 @@ export const operacaoInputSchema = z.object({
     condicaoPagamento: z.string().optional(),
     dataPrevistaRecebimento: z.string().optional(),
   }),
-  logistica: z.object({
-    distanciaKm: z.number().finite().gte(0).optional(),
-    fretePorTonelada: z.number().finite().gte(0).optional(),
-    freteTotalInformado: z.number().finite().gte(0).optional(),
-    tipoVeiculo: z.string().optional(),
-    capacidadeCargaTon: z.number().finite().gt(0).optional(),
-    pedagios: z.number().finite().gte(0).optional(),
-    outrosCustosLogisticos: z.number().finite().gte(0).optional(),
-    numeroEixos: z.number().int().gte(2).lte(9).optional(),
-  }),
+  logistica: z
+    .object({
+      distanciaKm: z.number().finite().gte(0).optional(),
+      fretePorTonelada: z.number().finite().gte(0).optional(),
+      freteTotalInformado: z.number().finite().gte(0).optional(),
+      tipoVeiculo: z.string().optional(),
+      capacidadeCargaTon: z.number().finite().gt(0).optional(),
+      pedagios: z.number().finite().gte(0).optional(),
+      outrosCustosLogisticos: z.number().finite().gte(0).optional(),
+      numeroEixos: z.number().int().gte(2).lte(9).optional(),
+    })
+    .optional()
+    .default({}),
   comissao: z
     .object({
       comissaoVendaPorSaca: z.number().finite().gte(0).optional(),
