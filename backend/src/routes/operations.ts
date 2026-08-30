@@ -1,21 +1,8 @@
 import { Router } from "express";
-import { randomUUID } from "node:crypto";
-import { TaxEngine } from "../engines/tax_engine/index.js";
-import { FreightEngine } from "../engines/freight_engine/index.js";
-import { DealEngine } from "../engines/deal_engine/index.js";
-import { PisoMinimoEngine } from "../engines/freight_engine/piso_minimo/index.js";
-import { seedPisoMinimoRules } from "../engines/freight_engine/piso_minimo/rules.seed.js";
-import { carregarRegrasAtivas } from "../db/taxRulesRepo.js";
-import { db } from "../db/client.js";
-import { operations, operationResults } from "../db/schema.js";
+import { montarDealEngine, executarCalculo } from "../services/calculoService.js";
 import { operacaoInputSchema, simularCenariosSchema } from "./validation.js";
 
 export const operationsRouter = Router();
-
-async function montarDealEngine(): Promise<DealEngine> {
-  const regras = await carregarRegrasAtivas();
-  return new DealEngine(new TaxEngine(regras), new FreightEngine(), new PisoMinimoEngine(seedPisoMinimoRules));
-}
 
 operationsRouter.post("/calcular", async (req, res) => {
   const parsed = operacaoInputSchema.safeParse(req.body);
@@ -23,35 +10,7 @@ operationsRouter.post("/calcular", async (req, res) => {
     return res.status(400).json({ erro: "Entrada inválida", detalhes: parsed.error.flatten() });
   }
 
-  const dealEngine = await montarDealEngine();
-  const resultado = await dealEngine.calcular(parsed.data);
-
-  // Persiste operação + resultado para histórico (item 11/12 — nunca sobrescrever, sempre novo registro)
-  const operationId = randomUUID();
-  const agora = new Date().toISOString();
-  await db.insert(operations).values({
-    id: operationId,
-    produto: parsed.data.mercadoria.produto,
-    quantidadeSacas: parsed.data.mercadoria.quantidadeSacas,
-    criadoEm: agora,
-    status: resultado.viavel ? "VIAVEL" : "NAO_VIAVEL",
-  });
-  await db.insert(operationResults).values({
-    id: randomUUID(),
-    operationId,
-    receitaTotal: resultado.receitaTotal.valor,
-    custoMercadoria: resultado.custoMercadoria.valor,
-    custoLogistico: resultado.custoLogistico.valor,
-    custoTributario: resultado.custoTributario.valor,
-    outrosCustos: resultado.outrosCustos.valor,
-    custoTotal: resultado.custoTotal.valor,
-    resultado: resultado.resultado.valor,
-    margemPercentual: resultado.margemPercentual,
-    precoMinimoVendaPorSaca: resultado.precoMinimoVendaPorSaca,
-    viavel: resultado.viavel,
-    calculadoEm: agora,
-  });
-
+  const { operationId, resultado } = await executarCalculo(parsed.data);
   return res.json({ operationId, resultado });
 });
 

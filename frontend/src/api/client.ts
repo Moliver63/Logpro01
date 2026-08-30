@@ -42,3 +42,18 @@ export async function getReferenciaPreco(produto: string) {
   }
   return res.json() as Promise<import("../types").ResultadoReferenciaPreco>;
 }
+
+export interface MensagemChat {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface RespostaChat {
+  resposta: string;
+  resultadoOperacao: ResultadoOperacao | null;
+  operationId: string | null;
+}
+
+export async function enviarMensagemChat(mensagens: MensagemChat[]): Promise<RespostaChat> {
+  return post("/chat", { mensagens });
+}

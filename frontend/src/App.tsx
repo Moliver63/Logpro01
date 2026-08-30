@@ -4,11 +4,15 @@ import { useOperationForm } from "./components/OperationForm/useOperationForm";
 import { ResultDashboard } from "./components/ResultDashboard";
 import { CalculationMemory } from "./components/CalculationMemory";
 import { ScenarioSimulator } from "./components/ScenarioSimulator";
+import { ChatAssistant } from "./components/ChatAssistant";
 import { calcularOperacao, simularCenarios } from "./api/client";
 import type { ResultadoOperacao, ResultadoCenario, Cenario } from "./types";
 
+type ModoEntrada = "formulario" | "chat";
+
 export default function App() {
   const { form, set, pronto, paraOperacaoInput } = useOperationForm();
+  const [modo, setModo] = useState<ModoEntrada>("formulario");
 
   const [resultado, setResultado] = useState<ResultadoOperacao | null>(null);
   const [calculando, setCalculando] = useState(false);
@@ -67,59 +71,85 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-8">
-          <span className="font-mono text-xs text-tintaSuave">01 / Nova operação</span>
-          <h1 className="mt-1 font-display text-3xl font-medium text-tinta">
-            Essa operação fecha ou não fecha?
-          </h1>
-        </div>
-
-        <OperationForm form={form} set={set} />
-
-        <div className="mt-6 flex items-center gap-4">
-          <button
-            onClick={handleCalcular}
-            disabled={!pronto || calculando}
-            className="rounded-card bg-brand-gradient px-6 py-3 font-body text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-azul/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {calculando ? "Calculando…" : "Calcular viabilidade"}
-          </button>
-          {!pronto && (
-            <span className="font-body text-xs text-tintaSuave">
-              Preencha sacas, preços, origem e destino para calcular.
-            </span>
-          )}
-          {erro && <span className="font-body text-xs text-risco">{erro}</span>}
-        </div>
-
-        {resultado && (
-          <div className="mt-12 space-y-6">
-            <div>
-              <span className="font-mono text-xs text-tintaSuave">02 / Resultado</span>
-              <h2 className="mt-1 font-display text-2xl font-medium text-tinta">Dashboard da operação</h2>
-            </div>
-
-            <ResultDashboard resultado={resultado} />
-            <CalculationMemory resultado={resultado} />
-
-            <div>
-              <span className="font-mono text-xs text-tintaSuave">03 / Simulação</span>
-              <h2 className="mt-1 font-display text-2xl font-medium text-tinta">
-                Qual combinação gera a melhor margem?
-              </h2>
-            </div>
-            <ScenarioSimulator
-              base={{
-                precoCompraPorSaca: Number(form.precoCompraPorSaca),
-                precoVendaPorSaca: Number(form.precoVendaPorSaca),
-                fretePorTonelada: Number(form.fretePorTonelada || 0),
-              }}
-              onSimular={handleSimular}
-              resultados={cenariosResultado}
-              melhorCenario={melhorCenario}
-              carregando={simulando}
-            />
+        <div className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <span className="font-mono text-xs text-tintaSuave">01 / Nova operação</span>
+            <h1 className="mt-1 font-display text-3xl font-medium text-tinta">
+              Essa operação fecha ou não fecha?
+            </h1>
           </div>
+          <div className="flex shrink-0 rounded-card border border-borda bg-white p-1">
+            <button
+              onClick={() => setModo("formulario")}
+              className={`rounded-card px-3 py-1.5 font-body text-xs font-medium transition-colors ${
+                modo === "formulario" ? "bg-azul text-white" : "text-tintaSuave hover:text-tinta"
+              }`}
+            >
+              Formulário
+            </button>
+            <button
+              onClick={() => setModo("chat")}
+              className={`rounded-card px-3 py-1.5 font-body text-xs font-medium transition-colors ${
+                modo === "chat" ? "bg-azul text-white" : "text-tintaSuave hover:text-tinta"
+              }`}
+            >
+              Chat
+            </button>
+          </div>
+        </div>
+
+        {modo === "chat" ? (
+          <ChatAssistant />
+        ) : (
+          <>
+            <OperationForm form={form} set={set} />
+
+            <div className="mt-6 flex items-center gap-4">
+              <button
+                onClick={handleCalcular}
+                disabled={!pronto || calculando}
+                className="rounded-card bg-brand-gradient px-6 py-3 font-body text-sm font-semibold uppercase tracking-wide text-white shadow-sm shadow-azul/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {calculando ? "Calculando…" : "Calcular viabilidade"}
+              </button>
+              {!pronto && (
+                <span className="font-body text-xs text-tintaSuave">
+                  Preencha sacas, preços, origem e destino para calcular.
+                </span>
+              )}
+              {erro && <span className="font-body text-xs text-risco">{erro}</span>}
+            </div>
+
+            {resultado && (
+              <div className="mt-12 space-y-6">
+                <div>
+                  <span className="font-mono text-xs text-tintaSuave">02 / Resultado</span>
+                  <h2 className="mt-1 font-display text-2xl font-medium text-tinta">Dashboard da operação</h2>
+                </div>
+
+                <ResultDashboard resultado={resultado} />
+                <CalculationMemory resultado={resultado} />
+
+                <div>
+                  <span className="font-mono text-xs text-tintaSuave">03 / Simulação</span>
+                  <h2 className="mt-1 font-display text-2xl font-medium text-tinta">
+                    Qual combinação gera a melhor margem?
+                  </h2>
+                </div>
+                <ScenarioSimulator
+                  base={{
+                    precoCompraPorSaca: Number(form.precoCompraPorSaca),
+                    precoVendaPorSaca: Number(form.precoVendaPorSaca),
+                    fretePorTonelada: Number(form.fretePorTonelada || 0),
+                  }}
+                  onSimular={handleSimular}
+                  resultados={cenariosResultado}
+                  melhorCenario={melhorCenario}
+                  carregando={simulando}
+                />
+              </div>
+            )}
+          </>
         )}
       </main>
 
