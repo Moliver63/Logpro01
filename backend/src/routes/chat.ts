@@ -7,6 +7,7 @@ import { executarCalculo } from "../services/calculoService.js";
 import { pesquisarReferenciaPreco } from "../services/precoReferenciaService.js";
 import { extrairDoTexto, descreverCamposFaltando } from "../services/extratorLocal.js";
 import { circuitoAberto, registrarFalha, registrarSucesso, statusCircuitos } from "../services/circuitBreaker.js";
+import { proximaChaveDisponivel, marcarChaveEsgotada, totalChavesConfiguradas, statusChaves } from "../services/geminiKeyPool.js";
 import type { ResultadoOperacao } from "../types/domain.js";
 
 export const chatRouter = Router();
@@ -14,7 +15,9 @@ export const chatRouter = Router();
 const MODELO_GEMINI = process.env.GEMINI_CHAT_MODEL ?? "gemini-flash-latest";
 const MODELO_GROQ = process.env.GROQ_CHAT_MODEL ?? "openai/gpt-oss-120b";
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
+// Não cria mais um cliente único fixo — cada chamada pega a chave disponível
+// no momento via geminiKeyPool, pra suportar rotação entre GEMINI_API_KEY,
+// GEMINI_API_KEY2, GEMINI_API_KEY3.
 
 /**
  * REGRA DE OURO — não negociável, vale para TODOS os provedores nesta cadeia:
@@ -125,11 +128,19 @@ const COOLDOWN_COTA_DIARIA_MS = 3 * 60 * 60_000; // 3h — não sabemos o horár
 
 /* ---------------- Provedor 1: Gemini ---------------- */
 
-async function chamarGeminiComRetry(historico: Content[], tentativas = 3): Promise<GenerateContentResponse> {
+async function chamarGeminiComRetry(historico: Content[], tentativas = 4): Promise<GenerateContentResponse> {
   let ultimoErro: unknown;
   for (let i = 0; i < tentativas; i++) {
+    const chave = proximaChaveDisponivel();
+    if (!chave) {
+      // Todas as chaves configuradas estão com cota esgotada agora — não
+      // adianta insistir, sobe o erro pra cair no Groq.
+      throw ultimoErro ?? new Error("Nenhuma chave Gemini disponível (todas com cota esgotada no momento).");
+    }
+
     try {
-      return await genAI.models.generateContent({
+      const cliente = new GoogleGenAI({ apiKey: chave });
+      return await cliente.models.generateContent({
         model: MODELO_GEMINI,
         contents: historico,
         config: {
@@ -140,6 +151,14 @@ async function chamarGeminiComRetry(historico: Content[], tentativas = 3): Promi
       });
     } catch (erro) {
       ultimoErro = erro;
+      if (erroEhCotaDiariaEsgotada(erro)) {
+        // Essa chave específica esgotou — marca ela e tenta a próxima
+        // disponível já na iteração seguinte, sem esperar backoff (o
+        // problema não é sobrecarga passageira, é cota, não resolve com
+        // espera curta).
+        marcarChaveEsgotada(chave);
+        continue;
+      }
       if (!erroEhTemporario(erro) || i === tentativas - 1) throw erro;
       await aguardar(1200 * (i + 1));
     }
@@ -331,7 +350,7 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
 /** GET /api/chat/status — diagnóstico dos circuitos, pra não precisar caçar log toda vez que um provedor cai. */
 chatRouter.get("/status", (_req, res) => {
   res.json({
-    gemini: { configurado: !!process.env.GEMINI_API_KEY, modelo: MODELO_GEMINI, ...statusCircuitos().gemini },
+    gemini: { configurado: totalChavesConfiguradas() > 0, chaves: statusChaves(), modelo: MODELO_GEMINI, ...statusCircuitos().gemini },
     groq: { configurado: !!process.env.GROQ_API_KEY, modelo: MODELO_GROQ, ...statusCircuitos().groq },
   });
 });
@@ -342,7 +361,7 @@ chatRouter.post("/", async (req, res) => {
     return res.status(400).json({ erro: "Nenhuma mensagem enviada." });
   }
 
-  if (process.env.GEMINI_API_KEY && !circuitoAberto("gemini")) {
+  if (totalChavesConfiguradas() > 0 && !circuitoAberto("gemini")) {
     try {
       const resultado = await tentarComGemini(mensagens);
       registrarSucesso("gemini");
@@ -351,7 +370,7 @@ chatRouter.post("/", async (req, res) => {
       registrarFalha("gemini", erroEhCotaDiariaEsgotada(erro) ? COOLDOWN_COTA_DIARIA_MS : undefined);
       console.error("Gemini indisponível, tentando Groq:", erro);
     }
-  } else if (process.env.GEMINI_API_KEY) {
+  } else if (totalChavesConfiguradas() > 0) {
     console.log("Gemini com circuito aberto (falhou recentemente) — pulando direto pro Groq, sem gastar tempo tentando de novo.");
   }
 
