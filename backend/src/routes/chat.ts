@@ -43,9 +43,13 @@ const calcularOperacaoDeclaration: FunctionDeclaration = {
   name: "calcular_operacao",
   description:
     "Calcula a viabilidade de uma operação de compra e venda de grãos com os dados coletados até agora. Só chame quando tiver ao menos produto, sacas, preço de compra, preço de venda, origem e destino.",
-  parametersJsonSchema: zodToJsonSchema(operacaoInputSchema, "OperacaoInput").definitions![
-    "OperacaoInput"
-  ],
+  // $refStrategy: "none" é essencial aqui — o schema tem campos que reaproveitam
+  // o mesmo validador Zod (ex: precoPorSaca em compra e venda), e por padrão a
+  // biblioteca fatora isso em referências ($ref) para um objeto "definitions".
+  // Como mandamos só o schema do OperacaoInput pro Gemini (sem esse objeto
+  // externo), qualquer $ref vira uma referência quebrada. Com "none", tudo
+  // fica expandido por extenso, sem $ref nenhuma.
+  parametersJsonSchema: zodToJsonSchema(operacaoInputSchema, { $refStrategy: "none" }),
 };
 
 interface MensagemChat {
