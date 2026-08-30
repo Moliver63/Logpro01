@@ -159,8 +159,8 @@ export function OperationForm({ form, set }: Props) {
         </div>
         <p className="mt-4 text-xs text-tintaSuave">
           Tributos e fundos (ICMS, PIS, COFINS, FETHAB, SENAR e demais) são calculados automaticamente
-          pelo motor tributário a partir da origem, destino e produto informados acima — não são
-          digitados aqui.
+          pelo motor tributário a partir da origem, destino e produto informados acima. Não precisa
+          digitar isso aqui.
         </p>
       </Card>
     </div>

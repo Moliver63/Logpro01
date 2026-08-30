@@ -8,7 +8,7 @@ const origemLabel: Record<string, string> = {
   informado_usuario: "informado por você",
   calculado_sistema: "calculado pelo sistema",
   api_externa: "obtido de API externa",
-  estimado: "estimado — atenção",
+  estimado: "estimado, ainda sem confirmação",
 };
 
 export function CalculationMemory({ resultado }: { resultado: ResultadoOperacao }) {
@@ -49,7 +49,7 @@ export function CalculationMemory({ resultado }: { resultado: ResultadoOperacao 
               ))}
               {resultado.tributos.itens.length === 0 && (
                 <p className="font-body text-[13px] text-tintaSuave">
-                  Nenhuma regra tributária aplicada — ver pendências acima.
+                  Nenhuma regra tributária aplicada aqui. Veja as pendências acima.
                 </p>
               )}
             </div>

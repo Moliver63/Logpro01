@@ -122,9 +122,8 @@ export default function App() {
 
       <footer className="mt-16 border-t border-borda py-6">
         <p className="mx-auto max-w-6xl px-6 font-body text-xs text-tintaSuave">
-          LogPro MVP — motor de decisão comercial, não uma calculadora de impostos. Regras tributárias
-          exibidas na memória de cálculo são de referência e requerem validação de especialista antes de
-          uso comercial.
+          As regras tributárias usadas na memória de cálculo ainda precisam ser conferidas com um
+          especialista antes de fechar operações com elas.
         </p>
       </footer>
     </div>
