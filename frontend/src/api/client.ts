@@ -1,6 +1,13 @@
 import type { OperacaoInput, ResultadoOperacao, Cenario, ResultadoCenario } from "../types";
 
-const BASE = "/api";
+// Em dev local, o vite.config.ts faz proxy de /api para o backend (localhost:3333),
+// então "" + "/api" funciona sem configurar nada. Em produção (Static Site na
+// Render), frontend e backend vivem em domínios .onrender.com diferentes — não
+// existe proxy — então é preciso apontar explicitamente para a URL pública do
+// backend via variável de ambiente VITE_API_URL, configurada no serviço do
+// Render (ex: https://logpro-backend.onrender.com).
+const API_ROOT = import.meta.env.VITE_API_URL ?? "";
+const BASE = `${API_ROOT}/api`;
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
