@@ -128,6 +128,17 @@ export function OperationForm({ form, set }: Props) {
               step="0.01"
             />
           </Field>
+          <Field label="Distância (km)" hint="opcional, usado para checar o piso mínimo ANTT">
+            <NumberField value={form.distanciaKm} onValueChange={(v) => set("distanciaKm", v)} />
+          </Field>
+          <Field label="Número de eixos" hint="opcional, do veículo/composição contratada">
+            <NumberField
+              value={form.numeroEixos}
+              onValueChange={(v) => set("numeroEixos", v)}
+              min={2}
+              max={9}
+            />
+          </Field>
         </div>
       </Card>
 

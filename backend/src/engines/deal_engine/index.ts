@@ -5,9 +5,11 @@ import type {
   Cenario,
   ResultadoCenario,
   ValorRastreado,
+  ResultadoPisoMinimo,
 } from "../../types/domain.js";
 import { TaxEngine } from "../tax_engine/index.js";
 import { FreightEngine } from "../freight_engine/index.js";
+import { PisoMinimoEngine } from "../freight_engine/piso_minimo/index.js";
 
 const v = (valor: number, origem: ValorRastreado["origem"], observacao?: string): ValorRastreado => ({
   valor: round2(valor),
@@ -22,7 +24,8 @@ function round2(n: number): number {
 export class DealEngine {
   constructor(
     private readonly taxEngine: TaxEngine,
-    private readonly freightEngine: FreightEngine = new FreightEngine()
+    private readonly freightEngine: FreightEngine = new FreightEngine(),
+    private readonly pisoMinimoEngine: PisoMinimoEngine = new PisoMinimoEngine([])
   ) {}
 
   async calcular(input: OperacaoInput): Promise<ResultadoOperacao> {
@@ -88,6 +91,16 @@ export class DealEngine {
     const custoTotalSemReceita = custoMercadoria + custoLogistico + custoTributario + outrosCustos;
     const precoMinimoVendaPorSaca = sacas !== 0 ? custoTotalSemReceita / sacas : 0;
 
+    // ---- Piso mínimo ANTT (Lei 13.703/2018) — só roda se número de eixos foi informado ----
+    const pisoMinimoAntt: ResultadoPisoMinimo = logistica.numeroEixos
+      ? this.pisoMinimoEngine.calcular({
+          tipoCarga: "GRANEL_SOLIDO", // grãos a granel — soja/milho/trigo caem todos aqui
+          numeroEixos: logistica.numeroEixos,
+          distanciaKm: logistica.distanciaKm ?? 0,
+          freteInformadoTotal: cotacaoFrete.freteTotal,
+        })
+      : { aplicavel: false, pendencia: "Número de eixos não informado — piso mínimo ANTT não verificado." };
+
     return {
       receitaTotal: v(receitaTotal, "calculado_sistema"),
       custoMercadoria: v(custoMercadoria, "calculado_sistema"),
@@ -104,6 +117,7 @@ export class DealEngine {
       linhasCusto,
       tributos,
       frete: cotacaoFrete,
+      pisoMinimoAntt,
       pendenciasTributarias: tributos.pendencias,
     };
   }

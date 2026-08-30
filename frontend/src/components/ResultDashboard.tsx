@@ -89,7 +89,42 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
             </ul>
           </div>
         )}
+
+        <PisoMinimoCard piso={resultado.pisoMinimoAntt} />
       </div>
+    </div>
+  );
+}
+
+function PisoMinimoCard({ piso }: { piso: ResultadoOperacao["pisoMinimoAntt"] }) {
+  if (!piso.aplicavel) {
+    return (
+      <div className="rounded-card border border-borda bg-white p-4">
+        <span className="block font-body text-xs font-semibold uppercase tracking-wide text-tintaSuave">
+          Piso mínimo ANTT
+        </span>
+        <p className="mt-2 font-body text-[13px] leading-snug text-tintaSuave">{piso.pendencia}</p>
+      </div>
+    );
+  }
+
+  const abaixo = piso.freteInformadoAbaixoDoPiso;
+  return (
+    <div
+      className={`rounded-card border p-4 ${
+        abaixo ? "border-risco/40 bg-risco/5" : "border-borda bg-white"
+      }`}
+    >
+      <span className="block font-body text-xs font-semibold uppercase tracking-wide text-tintaSuave">
+        Piso mínimo ANTT (Lei 13.703/2018)
+      </span>
+      <span className="mt-1 block font-mono text-lg tabular-nums text-tinta">{brl(piso.valorPiso!)}</span>
+      {abaixo && (
+        <p className="mt-1 font-body text-[13px] font-medium text-risco">
+          O frete informado está abaixo do piso legal.
+        </p>
+      )}
+      <p className="mt-2 font-body text-[11px] text-tintaSuave">{piso.fonte}</p>
     </div>
   );
 }

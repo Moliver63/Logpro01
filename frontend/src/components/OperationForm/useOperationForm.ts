@@ -19,6 +19,8 @@ export interface FormState {
 
   fretePorTonelada: number | "";
   pedagios: number | "";
+  numeroEixos: number | "";
+  distanciaKm: number | "";
   outrosCustosLogisticos: number | "";
 
   comissaoVendaPorSaca: number | "";
@@ -44,6 +46,8 @@ export const estadoInicial: FormState = {
 
   fretePorTonelada: "",
   pedagios: "",
+  numeroEixos: "",
+  distanciaKm: "",
   outrosCustosLogisticos: "",
 
   comissaoVendaPorSaca: "",
@@ -90,6 +94,8 @@ export function useOperationForm() {
       pedagios: form.pedagios === "" ? undefined : Number(form.pedagios),
       outrosCustosLogisticos:
         form.outrosCustosLogisticos === "" ? undefined : Number(form.outrosCustosLogisticos),
+      numeroEixos: form.numeroEixos === "" ? undefined : Number(form.numeroEixos),
+      distanciaKm: form.distanciaKm === "" ? undefined : Number(form.distanciaKm),
     },
     comissao: {
       comissaoVendaPorSaca:

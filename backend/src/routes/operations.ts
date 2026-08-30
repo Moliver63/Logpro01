@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { TaxEngine } from "../engines/tax_engine/index.js";
 import { FreightEngine } from "../engines/freight_engine/index.js";
 import { DealEngine } from "../engines/deal_engine/index.js";
+import { PisoMinimoEngine } from "../engines/freight_engine/piso_minimo/index.js";
+import { seedPisoMinimoRules } from "../engines/freight_engine/piso_minimo/rules.seed.js";
 import { carregarRegrasAtivas } from "../db/taxRulesRepo.js";
 import { db } from "../db/client.js";
 import { operations, operationResults } from "../db/schema.js";
@@ -12,7 +14,7 @@ export const operationsRouter = Router();
 
 async function montarDealEngine(): Promise<DealEngine> {
   const regras = await carregarRegrasAtivas();
-  return new DealEngine(new TaxEngine(regras), new FreightEngine());
+  return new DealEngine(new TaxEngine(regras), new FreightEngine(), new PisoMinimoEngine(seedPisoMinimoRules));
 }
 
 operationsRouter.post("/calcular", async (req, res) => {

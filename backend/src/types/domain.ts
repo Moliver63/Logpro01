@@ -49,6 +49,7 @@ export interface DadosLogistica {
   capacidadeCargaTon?: number;
   pedagios?: number;
   outrosCustosLogisticos?: number;
+  numeroEixos?: number; // usado para checar o piso mínimo ANTT (Lei 13.703/2018)
 }
 
 export interface DespesaAdicional {
@@ -145,6 +146,41 @@ export interface FreightProvider {
   getDistance?(origem: string, destino: string): Promise<number>;
 }
 
+/* ---------------- piso mínimo ANTT (Lei 13.703/2018) ---------------- */
+
+export type TipoCargaAntt =
+  | "GRANEL_SOLIDO"
+  | "GRANEL_LIQUIDO"
+  | "CARGA_GERAL"
+  | "FRIGORIFICADA"
+  | "PERIGOSA"
+  | "NEOGRANEL";
+
+export type TabelaAntt = "A" | "B" | "C" | "D";
+
+export interface RegraPisoMinimo {
+  id: string;
+  tabela: TabelaAntt;
+  tipoCarga: TipoCargaAntt;
+  numeroEixos: number;
+  ccdPorKm: number; // coeficiente de custo de deslocamento, R$/km
+  ccValorFixo: number; // coeficiente de carga e descarga, R$ fixo
+  fonte: string;
+  vigenciaInicio: string;
+  vigenciaFim?: string;
+  versao: number;
+  ativo: boolean;
+}
+
+export interface ResultadoPisoMinimo {
+  aplicavel: boolean;
+  valorPiso?: number;
+  regraId?: string;
+  fonte?: string;
+  freteInformadoAbaixoDoPiso?: boolean;
+  pendencia?: string;
+}
+
 /* ---------------- deal_engine ---------------- */
 
 export interface LinhaCusto {
@@ -170,6 +206,7 @@ export interface ResultadoOperacao {
   linhasCusto: LinhaCusto[];
   tributos: ResultadoTributario;
   frete: CotacaoFrete;
+  pisoMinimoAntt: ResultadoPisoMinimo;
   pendenciasTributarias: string[];
 }
 

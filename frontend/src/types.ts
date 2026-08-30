@@ -30,6 +30,7 @@ export interface OperacaoInput {
     tipoVeiculo?: string;
     pedagios?: number;
     outrosCustosLogisticos?: number;
+    numeroEixos?: number;
   };
   comissao?: {
     comissaoVendaPorSaca?: number;
@@ -66,6 +67,15 @@ export interface LinhaCusto {
   origem: string;
 }
 
+export interface ResultadoPisoMinimo {
+  aplicavel: boolean;
+  valorPiso?: number;
+  regraId?: string;
+  fonte?: string;
+  freteInformadoAbaixoDoPiso?: boolean;
+  pendencia?: string;
+}
+
 export interface ResultadoOperacao {
   receitaTotal: ValorRastreado;
   custoMercadoria: ValorRastreado;
@@ -91,6 +101,7 @@ export interface ResultadoOperacao {
     provedor: string;
     origemDado: string;
   };
+  pisoMinimoAntt: ResultadoPisoMinimo;
   pendenciasTributarias: string[];
 }
 

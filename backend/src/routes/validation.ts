@@ -36,6 +36,7 @@ export const operacaoInputSchema = z.object({
     capacidadeCargaTon: z.number().finite().gt(0).optional(),
     pedagios: z.number().finite().gte(0).optional(),
     outrosCustosLogisticos: z.number().finite().gte(0).optional(),
+    numeroEixos: z.number().int().gte(2).lte(9).optional(),
   }),
   comissao: z
     .object({
