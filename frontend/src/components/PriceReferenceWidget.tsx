@@ -29,7 +29,7 @@ export function PriceReferenceWidget({ produto }: { produto: string }) {
           disabled={carregando}
           className="font-body text-xs font-medium text-azul underline decoration-azul/40 underline-offset-2 hover:text-azulDark disabled:opacity-50"
         >
-          {carregando ? "Consultando…" : "Ver referência internacional (Chicago)"}
+          {carregando ? "Consultando…" : "Ver referência de preço"}
         </button>
       )}
 
@@ -41,7 +41,7 @@ export function PriceReferenceWidget({ produto }: { produto: string }) {
         <div className="rounded-card border border-borda bg-white p-3">
           <div className="flex items-baseline justify-between">
             <span className="font-body text-xs uppercase tracking-wide text-tintaSuave">
-              Referência Chicago (CBOT)
+              Referência de preço
             </span>
             <span className="font-mono text-sm font-semibold tabular-nums text-tinta">
               {brl(resultado.valorPorSaca!)}/saca
