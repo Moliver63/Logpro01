@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { GoogleGenAI, FunctionCallingConfigMode, type Content, type FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, FunctionCallingConfigMode, type Content, type FunctionDeclaration, type GenerateContentResponse } from "@google/genai";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { operacaoInputSchema } from "./validation.js";
 import { executarCalculo } from "../services/calculoService.js";
+import { extrairDoTexto, descreverCamposFaltando } from "../services/extratorLocal.js";
 
 export const chatRouter = Router();
 
@@ -17,13 +18,9 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
  * viabilidade por conta própria. A única fonte de verdade para qualquer
  * número financeiro é a chamada da ferramenta `calcular_operacao`, que roda
  * o mesmo `executarCalculo` usado pela rota REST — os mesmos tax_engine,
- * freight_engine e deal_engine já testados.
- *
- * O papel da IA aqui é estritamente conversacional: entender o que o
- * usuário quer, perguntar o que falta, e chamar a ferramenta quando tiver
- * dado suficiente. Se o modelo tentar "estimar" um resultado em texto sem
- * chamar a ferramenta, isso é uma falha de design a corrigir no prompt —
- * nunca algo a aceitar silenciosamente.
+ * freight_engine e deal_engine já testados. Isso vale tanto pro caminho
+ * normal (Gemini) quanto pro fallback local — os dois só coletam dados,
+ * quem calcula é sempre o mesmo motor determinístico.
  */
 const SYSTEM_PROMPT = `Você é o assistente de preenchimento do LogPro, um motor de viabilidade de operações de compra e venda de grãos.
 
@@ -43,12 +40,6 @@ const calcularOperacaoDeclaration: FunctionDeclaration = {
   name: "calcular_operacao",
   description:
     "Calcula a viabilidade de uma operação de compra e venda de grãos com os dados coletados até agora. Só chame quando tiver ao menos produto, sacas, preço de compra, preço de venda, origem e destino.",
-  // $refStrategy: "none" é essencial aqui — o schema tem campos que reaproveitam
-  // o mesmo validador Zod (ex: precoPorSaca em compra e venda), e por padrão a
-  // biblioteca fatora isso em referências ($ref) para um objeto "definitions".
-  // Como mandamos só o schema do OperacaoInput pro Gemini (sem esse objeto
-  // externo), qualquer $ref vira uma referência quebrada. Com "none", tudo
-  // fica expandido por extenso, sem $ref nenhuma.
   parametersJsonSchema: zodToJsonSchema(operacaoInputSchema, { $refStrategy: "none" }),
 };
 
@@ -57,18 +48,112 @@ interface MensagemChat {
   content: string;
 }
 
-chatRouter.post("/", async (req, res) => {
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(503).json({ erro: "Chat indisponível — GEMINI_API_KEY não configurada no backend." });
+function erroEhTemporario(erro: unknown): boolean {
+  const texto = String((erro as { message?: string })?.message ?? erro);
+  return texto.includes("503") || texto.includes("UNAVAILABLE") || texto.includes("high demand");
+}
+
+function aguardar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Chama o Gemini com retry — só pra falha temporária (503/sobrecarga). Erros de outro tipo (chave inválida, schema, etc.) sobem direto, sem retry. */
+async function chamarGeminiComRetry(
+  historico: Content[],
+  tentativas = 3
+): Promise<GenerateContentResponse> {
+  let ultimoErro: unknown;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      return await genAI.models.generateContent({
+        model: MODELO,
+        contents: historico,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          tools: [{ functionDeclarations: [calcularOperacaoDeclaration] }],
+          toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
+        },
+      });
+    } catch (erro) {
+      ultimoErro = erro;
+      if (!erroEhTemporario(erro) || i === tentativas - 1) throw erro;
+      await aguardar(1200 * (i + 1)); // 1.2s, depois 2.4s
+    }
+  }
+  throw ultimoErro;
+}
+
+/**
+ * Fallback sem IA nenhuma — extrator local baseado em regras (ver
+ * extratorLocal.ts). Roda inteiramente no seu servidor, sem chamada
+ * externa, sempre disponível. Usado quando o Gemini falha mesmo depois do
+ * retry, ou quando a chave não está configurada.
+ */
+async function responderComFallbackLocal(mensagens: MensagemChat[]) {
+  const textoUsuario = mensagens
+    .filter((m) => m.role === "user")
+    .map((m) => m.content)
+    .join(" ");
+
+  const { campos, faltando } = extrairDoTexto(textoUsuario);
+
+  if (faltando.length > 0) {
+    return {
+      resposta: `Assistente de IA indisponível no momento — usando extração local simples. Ainda faltam: ${descreverCamposFaltando(
+        faltando
+      )}. Pode escrever de novo incluindo isso, ou usar o Formulário (funciona sempre, sem depender de IA).`,
+      resultadoOperacao: null,
+      operationId: null,
+    };
   }
 
+  const input = {
+    mercadoria: { produto: campos.produto!, quantidadeSacas: campos.quantidadeSacas!, pesoPorSacaKg: 60 },
+    compra: {
+      precoPorSaca: campos.precoCompraPorSaca!,
+      municipioOrigem: campos.municipioOrigem!,
+      estadoOrigem: campos.estadoOrigem!,
+    },
+    venda: {
+      precoPorSaca: campos.precoVendaPorSaca!,
+      municipioDestino: campos.municipioDestino!,
+      estadoDestino: campos.estadoDestino!,
+    },
+    logistica: campos.fretePorTonelada ? { fretePorTonelada: campos.fretePorTonelada } : {},
+    tipoOperacao: "SOBRE_RODAS",
+  };
+
+  const parsed = operacaoInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      resposta:
+        "Assistente de IA indisponível — tentei extrair os dados do seu texto mas algo não bateu com o formato esperado. Use o Formulário, que funciona sempre.",
+      resultadoOperacao: null,
+      operationId: null,
+    };
+  }
+
+  const resultado = await executarCalculo(parsed.data);
+  return {
+    resposta: `Assistente de IA indisponível no momento — calculei com extração local a partir do que você escreveu. Confira se os dados abaixo batem com o que você quis dizer: ${
+      resultado.resultado.viavel ? "operação viável" : "operação não viável"
+    }, margem de ${resultado.resultado.margemPercentual.toFixed(1)}%.`,
+    resultadoOperacao: resultado.resultado,
+    operationId: resultado.operationId,
+  };
+}
+
+chatRouter.post("/", async (req, res) => {
   const mensagens: MensagemChat[] = Array.isArray(req.body?.mensagens) ? req.body.mensagens : [];
   if (mensagens.length === 0) {
     return res.status(400).json({ erro: "Nenhuma mensagem enviada." });
   }
 
+  if (!process.env.GEMINI_API_KEY) {
+    return res.json(await responderComFallbackLocal(mensagens));
+  }
+
   try {
-    // Gemini usa role "model" em vez de "assistant" e agrupa texto em "parts".
     const historico: Content[] = mensagens.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
@@ -78,18 +163,8 @@ chatRouter.post("/", async (req, res) => {
     let operationId: string | null = null;
     let textoFinal = "";
 
-    // Loop de tool use: no máximo 3 idas e voltas por requisição, pra não
-    // deixar a chamada rodando indefinidamente se algo sair do esperado.
     for (let passo = 0; passo < 3; passo++) {
-      const resposta = await genAI.models.generateContent({
-        model: MODELO,
-        contents: historico,
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          tools: [{ functionDeclarations: [calcularOperacaoDeclaration] }],
-          toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
-        },
-      });
+      const resposta = await chamarGeminiComRetry(historico);
 
       if (resposta.text) {
         textoFinal = resposta.text;
@@ -98,11 +173,9 @@ chatRouter.post("/", async (req, res) => {
       const chamada = resposta.functionCalls?.[0];
 
       if (!chamada) {
-        // Modelo respondeu só texto — não precisa mais rodar a ferramenta, encerra o loop.
         break;
       }
 
-      // Guarda o turno do modelo (com a function call) no histórico.
       historico.push({
         role: "model",
         parts: [{ functionCall: { name: chamada.name, args: chamada.args } }],
@@ -110,7 +183,6 @@ chatRouter.post("/", async (req, res) => {
 
       const parsed = operacaoInputSchema.safeParse(chamada.args);
       if (!parsed.success) {
-        // Dado insuficiente ou mal formado — devolve o erro pro modelo tentar de novo pedindo o que falta.
         historico.push({
           role: "user",
           parts: [
@@ -148,7 +220,12 @@ chatRouter.post("/", async (req, res) => {
 
     return res.json({ resposta: textoFinal, resultadoOperacao, operationId });
   } catch (erro) {
-    console.error("Erro no chat:", erro);
-    return res.status(500).json({ erro: "Falha ao processar a conversa." });
+    console.error("Erro no chat (Gemini indisponível após retry, caindo pro fallback local):", erro);
+    try {
+      return res.json(await responderComFallbackLocal(mensagens));
+    } catch (erroFallback) {
+      console.error("Erro no fallback local:", erroFallback);
+      return res.status(500).json({ erro: "Falha ao processar a conversa." });
+    }
   }
 });
