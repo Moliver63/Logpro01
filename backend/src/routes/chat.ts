@@ -9,8 +9,8 @@ import type { ResultadoOperacao } from "../types/domain.js";
 
 export const chatRouter = Router();
 
-const MODELO_GEMINI = process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash";
-const MODELO_GROQ = process.env.GROQ_CHAT_MODEL ?? "llama-3.3-70b-versatile";
+const MODELO_GEMINI = process.env.GEMINI_CHAT_MODEL ?? "gemini-flash-latest";
+const MODELO_GROQ = process.env.GROQ_CHAT_MODEL ?? "openai/gpt-oss-120b";
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 
