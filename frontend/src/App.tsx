@@ -50,16 +50,19 @@ export default function App() {
       <header className="border-b border-navySoft bg-navy">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="LogPro" className="h-11 w-11" />
-            <div className="flex flex-col">
+            <img src="/logo.png" alt="LogPro" className="h-11 w-11 shrink-0" />
+            <div className="flex flex-col justify-center">
               <span className="font-display text-xl font-extrabold leading-none tracking-tight text-white">
                 Log<span className="text-ciano">Pro</span>
               </span>
-              <span className="mt-1 font-body text-[11px] uppercase tracking-widest text-white/50">
+              <span className="mt-1.5 font-body text-[11px] leading-none uppercase tracking-widest text-white/50">
                 Gestão logística inteligente
               </span>
             </div>
           </div>
+          <span className="hidden font-mono text-[11px] uppercase tracking-widest text-white/40 sm:block">
+            Motor de viabilidade
+          </span>
         </div>
       </header>
 
@@ -120,11 +123,16 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mt-16 border-t border-borda py-6">
-        <p className="mx-auto max-w-6xl px-6 font-body text-xs text-tintaSuave">
-          As regras tributárias usadas na memória de cálculo ainda precisam ser conferidas com um
-          especialista antes de fechar operações com elas.
-        </p>
+      <footer className="mt-16 border-t border-borda bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-body text-xs text-tintaSuave">
+            As regras tributárias usadas na memória de cálculo ainda precisam ser conferidas com um
+            especialista antes de fechar operações com elas.
+          </p>
+          <p className="whitespace-nowrap font-body text-xs text-tintaSuave">
+            © {new Date().getFullYear()} LogPro · Michel Leal — Lab Quântico de Software
+          </p>
+        </div>
       </footer>
     </div>
   );
