@@ -4,7 +4,7 @@
  * importar nada de express, drizzle, etc.
  */
 
-export type Produto = "SOJA" | "MILHO" | "TRIGO" | "OUTRO";
+export type Produto = "SOJA" | "MILHO" | "TRIGO" | "SORGO" | "OUTRO";
 
 export type OrigemDado = "informado_usuario" | "calculado_sistema" | "api_externa" | "estimado";
 

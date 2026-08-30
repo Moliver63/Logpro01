@@ -1,4 +1,4 @@
-export type Produto = "SOJA" | "MILHO" | "TRIGO" | "OUTRO";
+export type Produto = "SOJA" | "MILHO" | "TRIGO" | "SORGO" | "OUTRO";
 
 export interface OperacaoInput {
   mercadoria: {

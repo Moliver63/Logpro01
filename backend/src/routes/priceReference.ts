@@ -7,7 +7,7 @@ export const priceReferenceRouter = Router();
 const cepea = new CepeaPriceReferenceProvider();
 const alphaVantage = new AlphaVantagePriceReferenceProvider(process.env.ALPHA_VANTAGE_API_KEY ?? "");
 
-const PRODUTOS_VALIDOS = new Set(["SOJA", "MILHO", "TRIGO", "OUTRO"]);
+const PRODUTOS_VALIDOS = new Set(["SOJA", "MILHO", "TRIGO", "SORGO", "OUTRO"]);
 
 /**
  * GET /api/price-reference/:produto — referência de preço, não substitui o

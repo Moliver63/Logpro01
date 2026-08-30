@@ -33,6 +33,7 @@ export function OperationForm({ form, set }: Props) {
               <option value="SOJA">Soja</option>
               <option value="MILHO">Milho</option>
               <option value="TRIGO">Trigo</option>
+              <option value="SORGO">Sorgo</option>
               <option value="OUTRO">Outro</option>
             </SelectField>
           </Field>

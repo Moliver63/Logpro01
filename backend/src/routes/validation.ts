@@ -6,7 +6,7 @@ const quantidadePositiva = z.number().finite().gt(0).lt(10_000_000);
 
 export const operacaoInputSchema = z.object({
   mercadoria: z.object({
-    produto: z.enum(["SOJA", "MILHO", "TRIGO", "OUTRO"]),
+    produto: z.enum(["SOJA", "MILHO", "TRIGO", "SORGO", "OUTRO"]),
     quantidadeSacas: quantidadePositiva,
     pesoPorSacaKg: z.number().finite().gt(0).lt(200).default(60),
     classificacao: z.string().optional(),
