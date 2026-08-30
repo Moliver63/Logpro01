@@ -1,14 +1,14 @@
 import { Router } from "express";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, FunctionCallingConfigMode, type Content, type FunctionDeclaration } from "@google/genai";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { operacaoInputSchema } from "./validation.js";
 import { executarCalculo } from "../services/calculoService.js";
 
 export const chatRouter = Router();
 
-const MODELO = process.env.ANTHROPIC_CHAT_MODEL ?? "claude-sonnet-5";
+const MODELO = process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" });
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 
 /**
  * REGRA DE OURO — não negociável:
@@ -39,13 +39,13 @@ Regras que você segue sempre:
 - Se o usuário pedir pra mudar um valor depois de já ter calculado, colete o novo dado e chame a ferramenta de novo com os dados atualizados.
 - Tom: direto, sem enrolação, português do Brasil. Sem "olá! ficarei feliz em ajudar" — vai direto ao ponto.`;
 
-const calcularOperacaoTool: Anthropic.Tool = {
+const calcularOperacaoDeclaration: FunctionDeclaration = {
   name: "calcular_operacao",
   description:
     "Calcula a viabilidade de uma operação de compra e venda de grãos com os dados coletados até agora. Só chame quando tiver ao menos produto, sacas, preço de compra, preço de venda, origem e destino.",
-  input_schema: zodToJsonSchema(operacaoInputSchema, "OperacaoInput").definitions![
+  parametersJsonSchema: zodToJsonSchema(operacaoInputSchema, "OperacaoInput").definitions![
     "OperacaoInput"
-  ] as Anthropic.Tool.InputSchema,
+  ],
 };
 
 interface MensagemChat {
@@ -54,8 +54,8 @@ interface MensagemChat {
 }
 
 chatRouter.post("/", async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ erro: "Chat indisponível — ANTHROPIC_API_KEY não configurada no backend." });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(503).json({ erro: "Chat indisponível — GEMINI_API_KEY não configurada no backend." });
   }
 
   const mensagens: MensagemChat[] = Array.isArray(req.body?.mensagens) ? req.body.mensagens : [];
@@ -64,9 +64,10 @@ chatRouter.post("/", async (req, res) => {
   }
 
   try {
-    const historico: Anthropic.MessageParam[] = mensagens.map((m) => ({
-      role: m.role,
-      content: m.content,
+    // Gemini usa role "model" em vez de "assistant" e agrupa texto em "parts".
+    const historico: Content[] = mensagens.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
     }));
 
     let resultadoOperacao = null;
@@ -76,39 +77,48 @@ chatRouter.post("/", async (req, res) => {
     // Loop de tool use: no máximo 3 idas e voltas por requisição, pra não
     // deixar a chamada rodando indefinidamente se algo sair do esperado.
     for (let passo = 0; passo < 3; passo++) {
-      const resposta = await anthropic.messages.create({
+      const resposta = await genAI.models.generateContent({
         model: MODELO,
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        tools: [calcularOperacaoTool],
-        messages: historico,
+        contents: historico,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          tools: [{ functionDeclarations: [calcularOperacaoDeclaration] }],
+          toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
+        },
       });
 
-      const blocoTexto = resposta.content.find((b) => b.type === "text");
-      if (blocoTexto && blocoTexto.type === "text") {
-        textoFinal = blocoTexto.text;
+      if (resposta.text) {
+        textoFinal = resposta.text;
       }
 
-      const blocoFerramenta = resposta.content.find((b) => b.type === "tool_use");
+      const chamada = resposta.functionCalls?.[0];
 
-      if (!blocoFerramenta || blocoFerramenta.type !== "tool_use") {
+      if (!chamada) {
         // Modelo respondeu só texto — não precisa mais rodar a ferramenta, encerra o loop.
         break;
       }
 
-      historico.push({ role: "assistant", content: resposta.content });
+      // Guarda o turno do modelo (com a function call) no histórico.
+      historico.push({
+        role: "model",
+        parts: [{ functionCall: { name: chamada.name, args: chamada.args } }],
+      });
 
-      const parsed = operacaoInputSchema.safeParse(blocoFerramenta.input);
+      const parsed = operacaoInputSchema.safeParse(chamada.args);
       if (!parsed.success) {
         // Dado insuficiente ou mal formado — devolve o erro pro modelo tentar de novo pedindo o que falta.
         historico.push({
           role: "user",
-          content: [
+          parts: [
             {
-              type: "tool_result",
-              tool_use_id: blocoFerramenta.id,
-              content: `Dados incompletos ou inválidos: ${JSON.stringify(parsed.error.flatten())}. Peça ao usuário os campos que faltam.`,
-              is_error: true,
+              functionResponse: {
+                name: "calcular_operacao",
+                response: {
+                  erro: "Dados incompletos ou inválidos",
+                  detalhes: parsed.error.flatten(),
+                  instrucao: "Peça ao usuário os campos que faltam.",
+                },
+              },
             },
           ],
         });
@@ -121,11 +131,12 @@ chatRouter.post("/", async (req, res) => {
 
       historico.push({
         role: "user",
-        content: [
+        parts: [
           {
-            type: "tool_result",
-            tool_use_id: blocoFerramenta.id,
-            content: JSON.stringify(resultado.resultado),
+            functionResponse: {
+              name: "calcular_operacao",
+              response: resultado.resultado as unknown as Record<string, unknown>,
+            },
           },
         ],
       });
