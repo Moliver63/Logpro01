@@ -18,10 +18,15 @@ function LinhaResultado({ label, valor, destaque }: { label: string; valor: numb
 
 export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao }) {
   const { viavel, calculoCompleto } = resultado;
-  const status = !calculoCompleto
-    ? { texto: "Cálculo incompleto", cor: "border-ciano", textoCor: "text-azulDark", fundo: "bg-ciano" }
-    : viavel
-    ? { texto: "Operação viável", cor: "border-sucesso", textoCor: "text-sucessoDark", fundo: "bg-sucesso" }
+
+  // Viabilidade e completude são independentes: a operação pode fechar no
+  // dinheiro e ainda assim ter pendências que tornam a margem otimista.
+  // Mostrar os dois separadamente responde a pergunta do usuário sem
+  // esconder o que falta conferir.
+  const status = viavel
+    ? calculoCompleto
+      ? { texto: "Operação viável", cor: "border-sucesso", textoCor: "text-sucessoDark", fundo: "bg-sucesso" }
+      : { texto: "Viável, com pendências", cor: "border-ciano", textoCor: "text-azulDark", fundo: "bg-ciano" }
     : { texto: "Operação não viável", cor: "border-risco", textoCor: "text-risco", fundo: "bg-risco" };
 
   return (
@@ -81,6 +86,13 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
             <span className="font-body text-xs font-semibold uppercase tracking-wide text-azulDark">
               Pendências operacionais
             </span>
+            {resultado.pendenciasTributarias.length > 0 && (
+              <p className="mt-2 font-body text-[13px] leading-snug text-tinta">
+                Há tributos sem regra cadastrada. Eles entraram no cálculo como
+                R$ 0,00 por falta de cadastro, não por isenção — a margem acima
+                está mais alta do que a real.
+              </p>
+            )}
             <ul className="mt-2 space-y-1.5">
               {resultado.pendenciasOperacionais.map((p, i) => (
                 <li key={i} className="font-body text-[13px] leading-snug text-tinta">

@@ -109,6 +109,24 @@ export class DealEngine {
     ];
     const calculoCompleto = pendenciasOperacionais.length === 0;
 
+    // Viabilidade e completude são coisas diferentes, e juntá-las tornava o
+    // produto incapaz de responder a própria pergunta que ele existe para
+    // responder: enquanto houver qualquer tributo sem cadastro ou o piso
+    // ANTT sem coeficiente vigente, `calculoCompleto` é false — e isso é
+    // permanente até alguém cadastrar as regras. Com a regra antiga
+    // (`resultado > 0 && calculoCompleto`), NENHUMA operação jamais era
+    // marcada como viável, nem a operação de referência com lucro real.
+    //
+    // Agora `viavel` responde à pergunta financeira ("o resultado é
+    // positivo?") e `calculoCompleto` continua dizendo, separadamente, se
+    // dá para confiar plenamente no número. A interface mostra os dois.
+    //
+    // A exceção é o impedimento de fato: frete abaixo do piso mínimo ANTT
+    // não é "informação faltando", é uma operação que não pode ser
+    // executada como está. Isso continua bloqueando a viabilidade.
+    const impedimentoReal = pisoMinimoAntt.aplicavel === true && pisoMinimoAntt.freteInformadoAbaixoDoPiso === true;
+    const viavel = resultado > 0 && !impedimentoReal;
+
     return {
       receitaTotal: v(receitaTotal, "calculado_sistema"),
       custoMercadoria: v(custoMercadoria, "calculado_sistema"),
@@ -121,7 +139,7 @@ export class DealEngine {
       resultadoPorSaca: round2(resultadoPorSaca),
       resultadoPorTonelada: round2(resultadoPorTonelada),
       precoMinimoVendaPorSaca: round2(precoMinimoVendaPorSaca),
-      viavel: resultado > 0 && calculoCompleto,
+      viavel,
       calculoCompleto,
       linhasCusto,
       tributos,

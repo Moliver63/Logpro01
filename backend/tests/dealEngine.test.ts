@@ -39,7 +39,8 @@ describe("DealEngine — caso de referência (planilha soja MT→SP)", () => {
     expect(resultado.custoLogistico.valor).toBe(300_000);
     expect(resultado.resultado.valor).toBe(744_695);
     expect(resultado.margemPercentual).toBeCloseTo(21.28, 1);
-    expect(resultado.viavel).toBe(false);
+    // Viabilidade responde à pergunta financeira; completude é separada.
+    expect(resultado.viavel).toBe(true);
     expect(resultado.calculoCompleto).toBe(false);
   });
 
@@ -76,12 +77,28 @@ describe("DealEngine — comportamento com produto sem regra cadastrada", () => 
     expect(resultado.pendenciasTributarias.join(" ")).toMatch(/ausência de cadastro|não cadastrad/i);
   });
 
-  it("não marca operação lucrativa com pendência fiscal como viável", async () => {
+  // REGRESSÃO: com a regra anterior (`resultado > 0 && calculoCompleto`),
+  // nenhuma operação jamais era viável, porque três tributos nunca foram
+  // cadastrados e o piso ANTT está com vigência expirada — pendências
+  // permanentes. O produto respondia "cálculo incompleto" para tudo,
+  // inclusive para a operação de referência com lucro real.
+  it("marca operação lucrativa como viável mesmo com pendência fiscal, sinalizando a incompletude", async () => {
     const resultado = await montarEngine().calcular(OPERACAO_SOJA_REFERENCIA);
 
     expect(resultado.resultado.valor).toBeGreaterThan(0);
     expect(resultado.pendenciasTributarias.length).toBeGreaterThan(0);
+    expect(resultado.viavel).toBe(true);
+    // A incompletude não some — só deixa de zerar a resposta financeira.
     expect(resultado.calculoCompleto).toBe(false);
+  });
+
+  it("não marca operação com prejuízo como viável", async () => {
+    const resultado = await montarEngine().calcular({
+      ...OPERACAO_SOJA_REFERENCIA,
+      venda: { ...OPERACAO_SOJA_REFERENCIA.venda, precoPorSaca: 20 },
+    });
+
+    expect(resultado.resultado.valor).toBeLessThan(0);
     expect(resultado.viavel).toBe(false);
   });
 });
