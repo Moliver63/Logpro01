@@ -32,7 +32,10 @@ app.use(
       // são permitidas — o navegador é quem envia Origin.
       if (!origin) return callback(null, true);
       if (ORIGENS_PERMITIDAS.includes(origin)) return callback(null, true);
-      if (process.env.NODE_ENV !== "production" && origin.startsWith("http://localhost")) {
+      // Liberar localhost é opt-in explícito, para desenvolvimento local.
+      // Não depende de NODE_ENV de propósito: definir NODE_ENV=production
+      // faz o npm pular devDependencies e quebra o build no Render.
+      if (process.env.PERMITIR_CORS_LOCALHOST === "true" && origin.startsWith("http://localhost")) {
         return callback(null, true);
       }
       return callback(new Error("Origem não permitida pelo CORS"));
