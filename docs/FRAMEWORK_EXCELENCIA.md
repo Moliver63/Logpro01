@@ -55,17 +55,24 @@ Antes de qualquer commit para o repositório:
 
 ```bash
 # backend
-cd backend && npm run typecheck
+cd backend && npm run typecheck && npm test
 
 # frontend
 cd frontend && npx tsc -b --noEmit && npx vite build
 ```
 
-Build de produção do frontend (`vite build`) roda sempre, não só
-typecheck — já pegou problema que o `tsc` sozinho não pegava. Quando uma
-mudança envolve o `deal_engine` ou `tax_engine`, rodar o cálculo contra os
-dados das planilhas de referência (Alto Taquari-MT → Rancharia-SP) e
-conferir que os números ainda batem antes de subir.
+Os três comandos pegam coisas diferentes e nenhum substitui o outro:
+
+- `typecheck` pega erro de tipo.
+- `npm test` pega erro de comportamento. Os testes fixam os números das
+  planilhas de referência — foi assim que apareceu um erro de
+  arredondamento no `tax_engine` que fazia `7000.000000000001` chegar na
+  memória de cálculo exibida ao usuário, invisível para typecheck e build.
+- `vite build` (produção, não só typecheck) já pegou problema que o `tsc`
+  sozinho não pegava.
+
+Teste novo acompanha correção de bug. Quando um erro aparece em produção,
+o teste que o reproduz entra junto com a correção — senão ele volta.
 
 ## REGRA 5 — SEGURANÇA
 
@@ -84,16 +91,31 @@ conferir que os números ainda batem antes de subir.
 
 Antes de marcar um deploy como concluído:
 
-1. Build local limpo (backend `npm run build`, frontend `vite build`).
-2. Push pro GitHub confirmado (branch `main` atualizada, commit certo).
-3. Se o autoDeploy da Render não disparar sozinho em ~30s, disparar
+1. Testes passando (`cd backend && npm test`).
+2. Build local limpo (backend `npm run build`, frontend `vite build`).
+3. Push pro GitHub confirmado (branch `main` atualizada, commit certo).
+4. Se o autoDeploy da Render não disparar sozinho em ~30s, disparar
    manualmente (`trigger_deploy`) — já aconteceu de não disparar sozinho,
    não assumir que subiu só porque o push foi feito.
-4. Conferir o log do deploy até aparecer `live`, não só `build successful`
+5. Conferir o log do deploy até aparecer `live`, não só `build successful`
    — build pode passar e o start command falhar depois.
-5. Pra mudança de frontend, um teste visual (screenshot ou acesso real)
+6. Pra mudança de frontend, um teste visual (screenshot ou acesso real)
    antes de considerar terminado — erro de proxy/API_URL não aparece no
    build, só em runtime.
+
+### Duas armadilhas já pagas caro — não repetir
+
+**Nunca definir `NODE_ENV=production` no serviço da Render.** O npm passa
+a pular `devDependencies`, o `typescript` não é instalado, e o
+`npm run build` quebra com "Could not find a declaration file for module
+'express'". Por causa disso, `typescript`, `tsx` e os `@types` moram em
+`dependencies` no `package.json` do backend, com um comentário explicando.
+Não "arrumar" isso movendo-os de volta para `devDependencies`.
+
+**A API de variáveis de ambiente da Render substitui a lista inteira, não
+mescla.** Enviar só uma variável apaga todas as outras — já apagou as
+chaves de IA em produção. Sempre enviar o conjunto completo, ou editar
+pelo dashboard.
 
 ## REGRA 7 — DOCUMENTAÇÃO
 
@@ -152,6 +174,62 @@ que só se comunicam pelos tipos em `types/domain.ts`. Trocar o provider de
 frete (manual → Sapiens Agro) ou a fonte das regras tributárias (seed →
 banco → API de terceiro) não deve exigir tocar no `deal_engine`.
 
+### O assistente coleta, o motor calcula
+
+O chat nunca produz um número financeiro. Ele conversa, extrai os dados e
+chama as ferramentas (`calcular_operacao`, `consultar_referencia_preco`),
+que por sua vez usam exatamente os mesmos serviços que a rota REST usa.
+Se um modelo "estimar" uma margem em texto sem chamar a ferramenta, isso é
+falha de prompt a corrigir, nunca comportamento a aceitar.
+
+Isso vale igualmente para os três níveis da cadeia — provedor principal,
+reserva e extrator local. Nenhum deles calcula; todos chamam o mesmo motor.
+
+### Fornecedores de IA são detalhe interno
+
+Nem a interface nem a API expõem qual fornecedor está atendendo. O
+endpoint `/api/chat/status` devolve só disponibilidade e modo. Nos logs,
+os provedores são "principal" e "reserva". Trocar de fornecedor não deve
+exigir mudança em nada externo — e não deve aparecer para o usuário.
+
+Provedor fora do ar não é tentado de novo a cada mensagem: o
+`circuitBreaker` mantém um cooldown com backoff, e distingue sobrecarga
+passageira (minutos) de cota diária esgotada (horas), porque insistir no
+segundo caso não resolve até a cota resetar.
+
+### O extrator local nunca adivinha
+
+O fallback sem IA identifica origem e destino pelo verbo que os acompanha
+("compro em X", "vendo em Y"), nunca pela ordem em que aparecem no texto.
+A versão anterior pegava os dois primeiros locais na ordem da frase, o que
+invertia a rota quando o usuário escrevia a venda antes da compra —
+calculando tributos de SP→MT em vez de MT→SP, sem nenhum aviso. Erro
+silenciosamente errado é o pior tipo possível neste produto; existe teste
+de regressão fixando esse comportamento.
+
+### Transerve não é um FreightProvider
+
+A API da Transerve solicita frete e rastreia entrega, mas não devolve
+cotação de preço. Implementá-la como `FreightProvider` obrigaria a
+inventar um valor por tonelada para cumprir a interface — exatamente o que
+a Regra 3 proíbe. Ela vive em `integrations/`, separada do
+`freight_engine`. O frete continua vindo do que o usuário informa.
+
+### Endpoints protegidos por padrão
+
+O CORS é restrito à origem do frontend (`FRONTEND_ORIGIN`) e há rate limit
+em todas as rotas, mais apertado no chat porque cada mensagem consome cota
+externa finita. Rota nova entra protegida; abrir o CORS "só para testar" é
+como o endpoint de chat ficou exposto a qualquer origem por um tempo.
+
+### Erro em rota async precisa de next(erro)
+
+O Express 4 não captura exceção lançada dentro de handler `async`. Sem
+`try/catch` + `next(erro)`, a requisição fica pendurada sem resposta (o
+usuário vê "Calculando…" para sempre) e o processo gera unhandled
+rejection. Toda rota async encaminha erro para o handler central do
+`server.ts`.
+
 ### SQLite local como ponte, não como decisão final de produção
 A escolha de SQLite via Drizzle foi para rodar sem infraestrutura externa
 na fase inicial. O schema já é escrito para migrar a Postgres com mudança
@@ -174,15 +252,35 @@ manualmente se necessário antes de considerar o deploy concluído.
 
 ## PENDÊNCIAS TÉCNICAS ABERTAS
 
-- Regras tributárias cadastradas cobrem só os dois cenários das planilhas
-  de referência (soja MT→SP, milho MT→MT) — qualquer outra combinação de
-  UF retorna pendência por design, não é bug.
-- Regras seed precisam de validação com especialista tributário/contábil
-  antes de qualquer uso comercial real — pendência declarada desde a
-  criação do motor, ainda não resolvida.
-- Sem disco persistente configurado na Render — histórico de operações
-  calculadas não sobrevive a redeploy do backend.
-- Serviço antigo `Logpro01` (Web Service mal configurado, herdado da
-  primeira tentativa de deploy) ainda existe na conta Render e precisa ser
-  apagado manualmente pelo Michel — sem permissão de delete via API neste
-  ambiente.
+**Críticas — bloqueiam uso comercial**
+
+- Regras seed precisam de validação com especialista tributário/contábil.
+  Pendência declarada desde a criação do motor, ainda não resolvida.
+- Piso mínimo ANTT com vigência **deliberadamente expirada** (12/03/2026,
+  véspera da Portaria SUROC nº 3/2026). Isso força pendência explícita em
+  vez de calcular com coeficiente velho. Confirmar os valores vigentes em
+  `calculadorafrete.antt.gov.br` e cadastrar nova versão da regra.
+- Dados da CEPEA são CC BY-NC 4.0 (não comercial). O uso atual foi
+  autorizado como projeto de estudo. Virando produto comercial, essa fonte
+  precisa ser renegociada com a CEPEA.
+
+**Abertas**
+
+- Regras tributárias cobrem só os dois cenários das planilhas de
+  referência (soja MT→SP, milho MT→MT) — qualquer outra combinação de UF
+  retorna pendência por design, não é bug.
+- Sem disco persistente na Render — histórico de operações calculadas não
+  sobrevive a redeploy do backend.
+- Credenciais Transerve (`TRANSERVE_CLIENT_ID` / `TRANSERVE_CLIENT_SECRET`)
+  ainda não fornecidas; sem elas as rotas respondem 503 explícito.
+- Sorgo não tem regra tributária nem fonte de cotação (a B3 não tem
+  contrato futuro de sorgo e a CEPEA não publica indicador) — o produto
+  existe no sistema e retorna pendência nos dois casos, por design.
+- Cotação de soja e sorgo em R$/saca não tem API gratuita e comercialmente
+  utilizável. Alpha Vantage cobre só milho e trigo, via Chicago.
+- Rotas Transerve de relatórios, viagens, CT-e e NF-e não implementadas —
+  dependem de contratação e liberação técnica da Transerve.
+
+**Resolvidas**
+
+- Serviço antigo `Logpro01` mal configurado — suspenso por Michel.
