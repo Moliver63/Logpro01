@@ -15,6 +15,9 @@ export const chatRouter = Router();
 const MODELO_GEMINI = process.env.GEMINI_CHAT_MODEL ?? "gemini-flash-latest";
 const MODELO_GROQ = process.env.GROQ_CHAT_MODEL ?? "openai/gpt-oss-120b";
 
+/** Quantas mensagens do histórico são reenviadas por turno. Ver comentário na rota POST. */
+const MAX_MENSAGENS_HISTORICO = 16;
+
 // Não cria mais um cliente único fixo — cada chamada pega a chave disponível
 // no momento via geminiKeyPool, pra suportar rotação entre GEMINI_API_KEY,
 // GEMINI_API_KEY2, GEMINI_API_KEY3.
@@ -310,7 +313,7 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
 
   if (faltando.length > 0) {
     return {
-      resposta: `Assistentes de IA indisponíveis no momento — usando extração local simples (sem pesquisa de preço nesse modo). Ainda faltam: ${descreverCamposFaltando(
+      resposta: `Estou no modo simplificado agora. Ainda faltam: ${descreverCamposFaltando(
         faltando
       )}. Pode escrever de novo incluindo isso, ou usar o Formulário (funciona sempre, sem depender de IA).`,
       resultadoOperacao: null,
@@ -329,7 +332,8 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
   const parsed = operacaoInputSchema.safeParse(input);
   if (!parsed.success) {
     return {
-      resposta: "Assistentes de IA indisponíveis — tentei extrair os dados do seu texto mas algo não bateu com o formato esperado. Use o Formulário, que funciona sempre.",
+      resposta:
+        "Não consegui entender os dados do jeito que foram escritos. O formulário funciona sempre e é o caminho mais direto agora.",
       resultadoOperacao: null,
       operationId: null,
     };
@@ -337,7 +341,7 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
 
   const resultado = await executarCalculo(parsed.data);
   return {
-    resposta: `Assistentes de IA indisponíveis no momento — calculei com extração local a partir do que você escreveu. Confira se os dados batem: ${
+    resposta: `Calculei com o que você escreveu. Vale conferir se os dados abaixo batem: ${
       resultado.resultado.viavel ? "operação viável" : "operação não viável"
     }, margem de ${resultado.resultado.margemPercentual.toFixed(1)}%.`,
     resultadoOperacao: resultado.resultado,
@@ -347,19 +351,41 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
 
 /* ---------------- Rota ---------------- */
 
-/** GET /api/chat/status — diagnóstico dos circuitos, pra não precisar caçar log toda vez que um provedor cai. */
+/**
+ * GET /api/chat/status — diagnóstico de disponibilidade.
+ *
+ * Não expõe qual fornecedor de IA está por trás nem qual modelo — isso é
+ * detalhe interno de implementação. Publicamente o assistente é só "o
+ * assistente do LogPro"; os provedores são referidos como "principal" e
+ * "reserva", e podem ser trocados a qualquer momento sem que nada externo
+ * dependa desses nomes.
+ */
 chatRouter.get("/status", (_req, res) => {
+  const principal = statusCircuitos().gemini;
+  const reserva = statusCircuitos().groq;
+
+  const assistenteDisponivel =
+    (totalChavesConfiguradas() > 0 && !principal?.aberto) || (!!process.env.GROQ_API_KEY && !reserva?.aberto);
+
   res.json({
-    gemini: { configurado: totalChavesConfiguradas() > 0, chaves: statusChaves(), modelo: MODELO_GEMINI, ...statusCircuitos().gemini },
-    groq: { configurado: !!process.env.GROQ_API_KEY, modelo: MODELO_GROQ, ...statusCircuitos().groq },
+    assistenteDisponivel,
+    // Modo de operação atual, sem citar fornecedor:
+    // "assistente" = IA respondendo; "local" = extrator determinístico.
+    modo: assistenteDisponivel ? "assistente" : "local",
   });
 });
 
 chatRouter.post("/", async (req, res) => {
-  const mensagens: MensagemChat[] = Array.isArray(req.body?.mensagens) ? req.body.mensagens : [];
-  if (mensagens.length === 0) {
+  const recebidas: MensagemChat[] = Array.isArray(req.body?.mensagens) ? req.body.mensagens : [];
+  if (recebidas.length === 0) {
     return res.status(400).json({ erro: "Nenhuma mensagem enviada." });
   }
+
+  // Mantém só as últimas trocas. O histórico inteiro é reenviado a cada
+  // turno, então sem esse corte a conversa fica progressivamente mais cara
+  // e mais lenta. Coleta de dados de uma operação não precisa de contexto
+  // longo — o que importa está nas mensagens recentes.
+  const mensagens = recebidas.slice(-MAX_MENSAGENS_HISTORICO);
 
   if (totalChavesConfiguradas() > 0 && !circuitoAberto("gemini")) {
     try {
@@ -368,10 +394,10 @@ chatRouter.post("/", async (req, res) => {
       return res.json(resultado);
     } catch (erro) {
       registrarFalha("gemini", erroEhCotaDiariaEsgotada(erro) ? COOLDOWN_COTA_DIARIA_MS : undefined);
-      console.error("Gemini indisponível, tentando Groq:", erro);
+      console.error("[assistente] provedor principal indisponível, tentando reserva:", erro);
     }
   } else if (totalChavesConfiguradas() > 0) {
-    console.log("Gemini com circuito aberto (falhou recentemente) — pulando direto pro Groq, sem gastar tempo tentando de novo.");
+    console.log("[assistente] provedor principal em cooldown — indo direto pro reserva.");
   }
 
   if (process.env.GROQ_API_KEY && !circuitoAberto("groq")) {
@@ -381,10 +407,10 @@ chatRouter.post("/", async (req, res) => {
       return res.json(resultado);
     } catch (erro) {
       registrarFalha("groq", erroEhCotaDiariaEsgotada(erro) ? COOLDOWN_COTA_DIARIA_MS : undefined);
-      console.error("Groq indisponível, caindo pro extrator local:", erro);
+      console.error("[assistente] provedor reserva indisponível, caindo pro extrator local:", erro);
     }
   } else if (process.env.GROQ_API_KEY) {
-    console.log("Groq com circuito aberto (falhou recentemente) — pulando direto pro extrator local.");
+    console.log("[assistente] provedor reserva em cooldown — indo direto pro extrator local.");
   }
 
   try {

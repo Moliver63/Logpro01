@@ -15,6 +15,16 @@ export interface TaxEngineQuery {
 }
 
 /**
+ * Arredonda para 2 casas. Aplicado a cada valor tributário individual, não
+ * só ao total — sem isso, imprecisão de ponto flutuante vaza direto pra
+ * memória de cálculo exibida ao usuário (ex: SENAR aparecendo como
+ * 7000.000000000001 em vez de 7000,00).
+ */
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
  * Tributos e fundos que o motor sabe monitorar. Usado só para detectar
  * lacunas de cadastro (item 4: "se não existir regra, retornar pendência")
  * — NÃO significa que todos incidem em toda operação; apenas que, se o
@@ -74,7 +84,7 @@ export class TaxEngine {
       itens.push(this.aplicar(regras[0], query));
     }
 
-    const totalTributos = itens.reduce((acc, i) => acc + i.valorComBeneficio, 0);
+    const totalTributos = round2(itens.reduce((acc, i) => acc + i.valorComBeneficio, 0));
 
     // Se NENHUMA regra bateu para este cenário, não é "custo zero" — é
     // cadastro ausente. Sinaliza explicitamente em vez de deixar o total
@@ -155,11 +165,11 @@ export class TaxEngine {
       regraId: regra.id,
       nome: regra.nome,
       tributo: regra.tributo,
-      base,
+      base: round2(base),
       aliquotaPercentual: regra.aliquotaPercentual,
-      valorBruto,
+      valorBruto: round2(valorBruto),
       beneficioAplicado,
-      valorComBeneficio,
+      valorComBeneficio: round2(valorComBeneficio),
       versaoRegra: regra.versao,
       fonte: regra.fonte,
     };

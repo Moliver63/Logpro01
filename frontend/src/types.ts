@@ -127,17 +127,3 @@ export interface ResultadoReferenciaPreco {
   fonte?: string;
   pendencia?: string;
 }
-
-export interface StatusProvedorIA {
-  configurado: boolean;
-  modelo: string;
-  aberto?: boolean;
-  falhasConsecutivas?: number;
-  reabreEm?: string | null;
-  chaves?: { total: number; disponiveisAgora: number };
-}
-
-export interface StatusChat {
-  gemini: StatusProvedorIA;
-  groq: StatusProvedorIA;
-}

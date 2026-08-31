@@ -1,45 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { getChatStatus } from "../api/client";
-import type { StatusChat, StatusProvedorIA } from "../types";
 
-function Bolinha({ ok }: { ok: boolean }) {
-  return <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-sucesso" : "bg-risco"}`} />;
-}
-
-function LinhaProvedor({ nome, status }: { nome: string; status: StatusProvedorIA }) {
-  const disponivel = status.configurado && !status.aberto;
-  return (
-    <div className="rounded-card border border-borda bg-papel p-3">
-      <div className="flex items-center justify-between">
-        <span className="font-body text-sm font-semibold text-tinta">{nome}</span>
-        <span className="flex items-center gap-1.5 font-body text-[11px] text-tintaSuave">
-          <Bolinha ok={disponivel} />
-          {!status.configurado ? "sem chave" : status.aberto ? "indisponível agora" : "disponível"}
-        </span>
-      </div>
-      <p className="mt-1 font-mono text-[11px] text-tintaSuave">{status.modelo}</p>
-      {status.chaves && (
-        <p className="mt-1 font-body text-[11px] text-tintaSuave">
-          {status.chaves.disponiveisAgora} de {status.chaves.total} chave(s) disponível(is)
-        </p>
-      )}
-      {status.aberto && status.reabreEm && (
-        <p className="mt-1 font-body text-[11px] text-tintaSuave">
-          Volta a tentar às {new Date(status.reabreEm).toLocaleTimeString("pt-BR")}
-        </p>
-      )}
-      {(status.falhasConsecutivas ?? 0) > 0 && (
-        <p className="mt-1 font-body text-[11px] text-tintaSuave">{status.falhasConsecutivas} falha(s) recente(s)</p>
-      )}
-    </div>
-  );
-}
-
-export function SettingsPanel() {
+export function SettingsPanel({ onAbrirFormulario }: { onAbrirFormulario: () => void }) {
   const [aberto, setAberto] = useState(false);
-  const [status, setStatus] = useState<StatusChat | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,26 +12,10 @@ export function SettingsPanel() {
     return () => document.removeEventListener("mousedown", handleClickFora);
   }, []);
 
-  async function abrir() {
-    const novoEstado = !aberto;
-    setAberto(novoEstado);
-    if (novoEstado) {
-      setCarregando(true);
-      setErro(null);
-      try {
-        setStatus(await getChatStatus());
-      } catch (e) {
-        setErro(e instanceof Error ? e.message : "Falha ao consultar status.");
-      } finally {
-        setCarregando(false);
-      }
-    }
-  }
-
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={abrir}
+        onClick={() => setAberto((v) => !v)}
         aria-label="Configurações"
         title="Configurações"
         className="flex h-9 w-9 items-center justify-center rounded-card text-white/60 transition-colors hover:bg-white/10 hover:text-white"
@@ -93,22 +39,26 @@ export function SettingsPanel() {
       </button>
 
       {aberto && (
-        <div className="absolute right-0 top-11 z-20 w-72 rounded-card border border-borda bg-white p-3 shadow-lg">
-          <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-tintaSuave">
-            Assistentes de IA
-          </p>
-          {carregando && <p className="font-body text-xs text-tintaSuave">Consultando…</p>}
-          {erro && <p className="font-body text-xs text-risco">{erro}</p>}
-          {status && (
-            <div className="space-y-2">
-              <LinhaProvedor nome="Gemini" status={status.gemini} />
-              <LinhaProvedor nome="Groq" status={status.groq} />
-              <p className="font-body text-[11px] leading-snug text-tintaSuave">
-                Quando um provedor está indisponível, o chat troca para o próximo automaticamente. Sem nenhum
-                disponível, ainda funciona com extração local simples.
-              </p>
-            </div>
-          )}
+        <div className="absolute right-0 top-11 z-20 w-56 rounded-card border border-borda bg-white p-1.5 shadow-lg">
+          <button
+            onClick={() => {
+              onAbrirFormulario();
+              setAberto(false);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-card px-3 py-2.5 text-left font-body text-sm text-tinta transition-colors hover:bg-papel"
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0 text-tintaSuave">
+              <path
+                d="M9 2h6l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M9 12h6M9 16h6M9 8h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            Formulário
+          </button>
         </div>
       )}
     </div>

@@ -57,11 +57,3 @@ export interface RespostaChat {
 export async function enviarMensagemChat(mensagens: MensagemChat[]): Promise<RespostaChat> {
   return post("/chat", { mensagens });
 }
-
-export async function getChatStatus(): Promise<import("../types").StatusChat> {
-  const res = await fetch(`${BASE}/chat/status`);
-  if (!res.ok) {
-    throw new Error(`Falha ao consultar status dos provedores (${res.status})`);
-  }
-  return res.json();
-}

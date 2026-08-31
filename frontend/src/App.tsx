@@ -69,7 +69,7 @@ export default function App() {
             <span className="hidden font-mono text-[11px] uppercase tracking-widest text-white/40 sm:block">
               Motor de viabilidade
             </span>
-            <SettingsPanel />
+            <SettingsPanel onAbrirFormulario={() => setModo("formulario")} />
           </div>
         </div>
       </header>
@@ -82,14 +82,10 @@ export default function App() {
               Essa operação fecha ou não fecha?
             </h1>
           </div>
-          <div className="flex shrink-0 rounded-card border border-borda bg-white p-1">
+          {modo === "formulario" && (
             <button
               onClick={() => setModo("chat")}
-              className={`flex items-center gap-1.5 rounded-card px-3 py-1.5 font-body text-xs font-medium transition-all ${
-                modo === "chat"
-                  ? "bg-brand-gradient text-white shadow-sm shadow-azul/30"
-                  : "text-tintaSuave hover:text-tinta"
-              }`}
+              className="flex shrink-0 items-center gap-1.5 rounded-card border border-borda bg-white px-3 py-1.5 font-body text-xs font-medium text-tintaSuave transition-colors hover:text-tinta"
             >
               <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
                 <path
@@ -100,17 +96,9 @@ export default function App() {
                   strokeLinejoin="round"
                 />
               </svg>
-              Chat
+              Voltar ao chat
             </button>
-            <button
-              onClick={() => setModo("formulario")}
-              className={`rounded-card px-3 py-1.5 font-body text-xs font-medium transition-colors ${
-                modo === "formulario" ? "bg-azul text-white" : "text-tintaSuave hover:text-tinta"
-              }`}
-            >
-              Formulário
-            </button>
-          </div>
+          )}
         </div>
 
         {modo === "chat" ? (
