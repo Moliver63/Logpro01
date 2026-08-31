@@ -11,25 +11,26 @@
     "test": "vitest run",
     "seed": "tsx src/db/seed.ts"
   },
+  "//": "typescript, tsx e os @types ficam em dependencies de proposito: o Render define NODE_ENV=production, o que faz o npm pular devDependencies. Sem eles, 'npm run build' (tsc) e 'npm run seed' (tsx) quebram no deploy. Apenas ferramentas que rodam so na maquina do dev (vitest, drizzle-kit) ficam em devDependencies.",
   "dependencies": {
     "@google/genai": "^1.0.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.5.0",
     "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.33.0",
     "express": "^4.19.2",
     "express-rate-limit": "^8.7.0",
     "groq-sdk": "^0.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.23.5"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.5.0",
     "drizzle-kit": "^0.24.2",
-    "tsx": "^4.19.0",
-    "typescript": "^5.5.4",
     "vitest": "^4.1.11"
   }
 }
