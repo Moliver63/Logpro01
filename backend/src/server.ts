@@ -5,6 +5,7 @@ import { operationsRouter } from "./routes/operations.js";
 import { taxRulesRouter } from "./routes/taxRules.js";
 import { priceReferenceRouter } from "./routes/priceReference.js";
 import { chatRouter } from "./routes/chat.js";
+import { transerveRouter } from "./routes/transerve.js";
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use("/api/operations", limiteGeral, operationsRouter);
 app.use("/api/tax-rules", limiteGeral, taxRulesRouter);
 app.use("/api/price-reference", limiteGeral, priceReferenceRouter);
 app.use("/api/chat", limiteChat, chatRouter);
+app.use("/api/transerve", limiteGeral, transerveRouter);
 
 /**
  * Handler de erro central. O Express 4 não captura exceção lançada dentro
