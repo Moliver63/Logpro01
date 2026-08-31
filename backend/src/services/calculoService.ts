@@ -29,15 +29,19 @@ export async function executarCalculo(
   const operationId = randomUUID();
   const agora = new Date().toISOString();
 
-  await db.transaction(async (tx) => {
-    await tx.insert(operations).values({
+  // A transação do better-sqlite3 é SÍNCRONA: passar uma função `async` faz
+  // ele lançar "Transaction function cannot return a promise" em tempo de
+  // execução, derrubando toda operação válida com erro 500. Por isso o
+  // callback abaixo não é async e os inserts usam `.run()` em vez de await.
+  db.transaction((tx) => {
+    tx.insert(operations).values({
       id: operationId,
       produto: input.mercadoria.produto,
       quantidadeSacas: input.mercadoria.quantidadeSacas,
       criadoEm: agora,
       status: resultado.viavel ? "VIAVEL" : "NAO_VIAVEL",
-    });
-    await tx.insert(operationResults).values({
+    }).run();
+    tx.insert(operationResults).values({
       id: randomUUID(),
       operationId,
       receitaTotal: resultado.receitaTotal.valor,
@@ -51,7 +55,7 @@ export async function executarCalculo(
       precoMinimoVendaPorSaca: resultado.precoMinimoVendaPorSaca,
       viavel: resultado.viavel,
       calculadoEm: agora,
-    });
+    }).run();
   });
 
   return { operationId, resultado };

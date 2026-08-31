@@ -74,12 +74,16 @@ desenvolvimento, defina `PERMITIR_CORS_LOCALHOST=true`.
 cd backend && npm test
 ```
 
-24 testes cobrindo o motor de cálculo contra os números das planilhas de
-referência, o extrator local (incluindo a regressão de inversão
-origem/destino) e a integração Transerve (autenticação, rotação de refresh
-token, validações). Rodar antes de qualquer commit — foram os testes que
-pegaram um erro de arredondamento no `tax_engine` que passava despercebido
-por typecheck e build.
+34 testes cobrindo o motor de cálculo contra os números das planilhas de
+referência, a validação de entrada, o extrator local (incluindo a regressão
+de inversão origem/destino), a persistência (`calculoService`) e a
+integração Transerve. Rodar antes de qualquer commit.
+
+Dois bugs já escaparam de typecheck e build e só apareceram em teste ou em
+runtime: um arredondamento no `tax_engine` que vazava
+`7000.000000000001` para a memória de cálculo, e uma transação `async` no
+`calculoService` que derrubava **toda** operação válida com erro 500. Os
+dois têm teste de regressão fixando o comportamento.
 
 ## API
 
@@ -137,6 +141,12 @@ R$ 38, venda R$ 70) das planilhas de referência, e batem com os valores
 originais linha a linha (ICMS, PIS, COFINS, FETHAB, SENAR, resultado
 final). Esses números estão fixados em `tests/dealEngine.test.ts` — se
 mudarem sem intenção, o teste quebra.
+
+O frete é obrigatório para o cálculo valer. Operação sem `logistica` ou com
+frete zerado é rejeitada na validação da API, e o piso mínimo ANTT, quando
+aplicável, impede viabilidade se o frete informado ficar abaixo dele — um
+número de margem calculado sobre frete inexistente seria enganoso, não
+otimista.
 
 ## Regras tributárias de referência
 
