@@ -68,7 +68,14 @@ const limiteChat = rateLimit({
   message: { erro: "Muitas mensagens seguidas. Aguarde um momento e tente de novo." },
 });
 
-app.get("/api/health", (_req, res) => res.json({ status: "ok", servico: "logpro-backend" }));
+app.get("/api/health", (_req, res) =>
+  res.json({
+    status: "ok",
+    servico: "logpro-backend",
+    ambiente: process.env.RENDER ? "render" : process.env.NODE_ENV ?? "development",
+    timestamp: new Date().toISOString(),
+  })
+);
 app.use("/api/operations", limiteGeral, operationsRouter);
 app.use("/api/tax-rules", limiteGeral, taxRulesRouter);
 app.use("/api/price-reference", limiteGeral, priceReferenceRouter);

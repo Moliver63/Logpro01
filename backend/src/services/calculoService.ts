@@ -28,27 +28,30 @@ export async function executarCalculo(
 
   const operationId = randomUUID();
   const agora = new Date().toISOString();
-  await db.insert(operations).values({
-    id: operationId,
-    produto: input.mercadoria.produto,
-    quantidadeSacas: input.mercadoria.quantidadeSacas,
-    criadoEm: agora,
-    status: resultado.viavel ? "VIAVEL" : "NAO_VIAVEL",
-  });
-  await db.insert(operationResults).values({
-    id: randomUUID(),
-    operationId,
-    receitaTotal: resultado.receitaTotal.valor,
-    custoMercadoria: resultado.custoMercadoria.valor,
-    custoLogistico: resultado.custoLogistico.valor,
-    custoTributario: resultado.custoTributario.valor,
-    outrosCustos: resultado.outrosCustos.valor,
-    custoTotal: resultado.custoTotal.valor,
-    resultado: resultado.resultado.valor,
-    margemPercentual: resultado.margemPercentual,
-    precoMinimoVendaPorSaca: resultado.precoMinimoVendaPorSaca,
-    viavel: resultado.viavel,
-    calculadoEm: agora,
+
+  await db.transaction(async (tx) => {
+    await tx.insert(operations).values({
+      id: operationId,
+      produto: input.mercadoria.produto,
+      quantidadeSacas: input.mercadoria.quantidadeSacas,
+      criadoEm: agora,
+      status: resultado.viavel ? "VIAVEL" : "NAO_VIAVEL",
+    });
+    await tx.insert(operationResults).values({
+      id: randomUUID(),
+      operationId,
+      receitaTotal: resultado.receitaTotal.valor,
+      custoMercadoria: resultado.custoMercadoria.valor,
+      custoLogistico: resultado.custoLogistico.valor,
+      custoTributario: resultado.custoTributario.valor,
+      outrosCustos: resultado.outrosCustos.valor,
+      custoTotal: resultado.custoTotal.valor,
+      resultado: resultado.resultado.valor,
+      margemPercentual: resultado.margemPercentual,
+      precoMinimoVendaPorSaca: resultado.precoMinimoVendaPorSaca,
+      viavel: resultado.viavel,
+      calculadoEm: agora,
+    });
   });
 
   return { operationId, resultado };

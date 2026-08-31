@@ -37,8 +37,9 @@ export interface OperacaoInput {
     comissaoOriginacaoPorSaca?: number;
     classificadorPorSaca?: number;
   };
-  despesasAdicionais?: { descricao: string; valorTotal: number }[];
+  despesasAdicionais?: { descricao: string; valorTotal?: number; valorPorSaca?: number }[];
   tipoOperacao?: string;
+  dataOperacao?: string;
 }
 
 export interface ValorRastreado {
@@ -89,6 +90,7 @@ export interface ResultadoOperacao {
   resultadoPorTonelada: number;
   precoMinimoVendaPorSaca: number;
   viavel: boolean;
+  calculoCompleto: boolean;
   linhasCusto: LinhaCusto[];
   tributos: {
     itens: ItemTributarioCalculado[];
@@ -103,6 +105,7 @@ export interface ResultadoOperacao {
   };
   pisoMinimoAntt: ResultadoPisoMinimo;
   pendenciasTributarias: string[];
+  pendenciasOperacionais: string[];
 }
 
 export interface Cenario {

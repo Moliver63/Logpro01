@@ -117,7 +117,7 @@ export default function App() {
               </button>
               {!pronto && (
                 <span className="font-body text-xs text-tintaSuave">
-                  Preencha sacas, preços, origem e destino para calcular.
+                  Preencha sacas, preços, origem, destino e frete para calcular.
                 </span>
               )}
               {erro && <span className="font-body text-xs text-risco">{erro}</span>}
@@ -143,7 +143,7 @@ export default function App() {
                   base={{
                     precoCompraPorSaca: Number(form.precoCompraPorSaca),
                     precoVendaPorSaca: Number(form.precoVendaPorSaca),
-                    fretePorTonelada: Number(form.fretePorTonelada || 0),
+                    fretePorTonelada: Number(form.fretePorTonelada),
                   }}
                   onSimular={handleSimular}
                   resultados={cenariosResultado}

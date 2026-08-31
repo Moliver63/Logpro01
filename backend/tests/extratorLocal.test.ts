@@ -4,7 +4,7 @@ import { extrairDoTexto } from "../src/services/extratorLocal.js";
 describe("extratorLocal", () => {
   it("extrai todos os campos de uma frase na ordem natural", () => {
     const { campos, faltando } = extrairDoTexto(
-      "50 mil sacas de soja, compro a 38 em Alto Taquari MT, vendo a 70 em Rancharia SP"
+      "50 mil sacas de soja, compro a 38 em Alto Taquari MT, vendo a 70 em Rancharia SP, frete 100"
     );
     expect(faltando).toHaveLength(0);
     expect(campos.produto).toBe("SOJA");
@@ -15,6 +15,7 @@ describe("extratorLocal", () => {
     expect(campos.estadoOrigem).toBe("MT");
     expect(campos.municipioDestino).toBe("Rancharia");
     expect(campos.estadoDestino).toBe("SP");
+    expect(campos.fretePorTonelada).toBe(100);
   });
 
   // REGRESSÃO: antes, o extrator pegava os dois primeiros locais na ordem do

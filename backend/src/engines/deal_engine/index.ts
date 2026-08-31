@@ -52,6 +52,7 @@ export class DealEngine {
       tipoOperacao: input.tipoOperacao ?? "SOBRE_RODAS",
       valorPorSaca: compra.precoPorSaca,
       quantidadeSacas: sacas,
+      dataBase: input.dataOperacao,
     });
     const custoTributario = tributos.totalTributos;
 
@@ -101,6 +102,13 @@ export class DealEngine {
         })
       : { aplicavel: false, pendencia: "Número de eixos não informado — piso mínimo ANTT não verificado." };
 
+    const pendenciasOperacionais = [
+      ...tributos.pendencias,
+      ...pendenciasFrete(logistica, cotacaoFrete),
+      ...pendenciasPiso(pisoMinimoAntt),
+    ];
+    const calculoCompleto = pendenciasOperacionais.length === 0;
+
     return {
       receitaTotal: v(receitaTotal, "calculado_sistema"),
       custoMercadoria: v(custoMercadoria, "calculado_sistema"),
@@ -113,12 +121,14 @@ export class DealEngine {
       resultadoPorSaca: round2(resultadoPorSaca),
       resultadoPorTonelada: round2(resultadoPorTonelada),
       precoMinimoVendaPorSaca: round2(precoMinimoVendaPorSaca),
-      viavel: resultado > 0,
+      viavel: resultado > 0 && calculoCompleto,
+      calculoCompleto,
       linhasCusto,
       tributos,
       frete: cotacaoFrete,
       pisoMinimoAntt,
       pendenciasTributarias: tributos.pendencias,
+      pendenciasOperacionais,
     };
   }
 
@@ -141,6 +151,34 @@ export class DealEngine {
     }
     return resultados;
   }
+}
+
+function pendenciasFrete(
+  logistica: OperacaoInput["logistica"],
+  cotacaoFrete: ResultadoOperacao["frete"]
+): string[] {
+  const pendencias: string[] = [];
+  if (logistica.fretePorTonelada == null && logistica.freteTotalInformado == null) {
+    pendencias.push("Frete real não informado.");
+  }
+  if ((logistica.fretePorTonelada ?? cotacaoFrete.fretePorTonelada) <= 0 || cotacaoFrete.freteTotal <= 0) {
+    pendencias.push("Frete zerado não é aceito para marcar viabilidade.");
+  }
+  if (cotacaoFrete.origemDado === "estimado") {
+    pendencias.push("Frete real ausente. O valor logístico não pode ser tratado como cotação válida.");
+  }
+  return [...new Set(pendencias)];
+}
+
+function pendenciasPiso(piso: ResultadoPisoMinimo): string[] {
+  if (piso.pendencia) return [piso.pendencia];
+  if (piso.aplicavel && piso.freteInformadoAbaixoDoPiso) {
+    return ["Frete informado abaixo do piso mínimo ANTT."];
+  }
+  if (!piso.aplicavel) {
+    return ["Piso mínimo ANTT não validado."];
+  }
+  return [];
 }
 
 function linha(descricao: string, valorPorSaca: number, sacas: number): LinhaCusto {

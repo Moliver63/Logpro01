@@ -72,6 +72,7 @@ export interface OperacaoInput {
   comissao?: DadosComissao;
   despesasAdicionais?: DespesaAdicional[];
   tipoOperacao?: string; // usado para casar regras tributárias (ex: "SOBRE_RODAS")
+  dataOperacao?: string; // ISO date; controla vigencia tributaria quando informada
 }
 
 /* ---------------- tax_engine ---------------- */
@@ -216,11 +217,13 @@ export interface ResultadoOperacao {
   resultadoPorTonelada: number;
   precoMinimoVendaPorSaca: number; // ponto de equilíbrio
   viavel: boolean;
+  calculoCompleto: boolean;
   linhasCusto: LinhaCusto[];
   tributos: ResultadoTributario;
   frete: CotacaoFrete;
   pisoMinimoAntt: ResultadoPisoMinimo;
   pendenciasTributarias: string[];
+  pendenciasOperacionais: string[];
 }
 
 export interface Cenario {

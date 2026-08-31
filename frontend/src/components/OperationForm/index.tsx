@@ -114,7 +114,7 @@ export function OperationForm({ form, set }: Props) {
       <Card className="p-5">
         <BlockHeader n="03" titulo="Frete" />
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Frete / tonelada (R$)" hint="informado manualmente nesta fase">
+          <Field label="Frete / tonelada (R$)" hint="informado manualmente nesta fase" required>
             <NumberField
               value={form.fretePorTonelada}
               onValueChange={(v) => set("fretePorTonelada", v)}

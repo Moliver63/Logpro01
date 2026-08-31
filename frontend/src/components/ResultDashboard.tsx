@@ -17,15 +17,18 @@ function LinhaResultado({ label, valor, destaque }: { label: string; valor: numb
 }
 
 export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao }) {
-  const { viavel } = resultado;
+  const { viavel, calculoCompleto } = resultado;
+  const status = !calculoCompleto
+    ? { texto: "Cálculo incompleto", cor: "border-ciano", textoCor: "text-azulDark", fundo: "bg-ciano" }
+    : viavel
+    ? { texto: "Operação viável", cor: "border-sucesso", textoCor: "text-sucessoDark", fundo: "bg-sucesso" }
+    : { texto: "Operação não viável", cor: "border-risco", textoCor: "text-risco", fundo: "bg-risco" };
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       {/* Status — o elemento de assinatura: ficha de pesagem/carimbo de terminal */}
       <div
-        className={`rounded-card border-2 bg-white p-6 shadow-sm shadow-navy/[0.04] ${
-          viavel ? "border-sucesso" : "border-risco"
-        }`}
+        className={`rounded-card border-2 bg-white p-6 shadow-sm shadow-navy/[0.04] ${status.cor}`}
       >
         <div className="flex items-start justify-between">
           <div>
@@ -34,9 +37,7 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
             </span>
             <div className="mt-1 flex items-baseline gap-3">
               <span
-                className={`font-display text-4xl font-extrabold tabular-nums ${
-                  viavel ? "text-sucessoDark" : "text-risco"
-                }`}
+                className={`font-display text-4xl font-extrabold tabular-nums ${status.textoCor}`}
               >
                 {brl(resultado.resultado.valor)}
               </span>
@@ -47,10 +48,10 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
           </div>
           <span
             className={`rounded-card px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-wider text-white ${
-              viavel ? "bg-sucesso" : "bg-risco"
+              status.fundo
             }`}
           >
-            {viavel ? "Operação viável" : "Operação não viável"}
+            {status.texto}
           </span>
         </div>
 
@@ -75,13 +76,13 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
           <MetricCard label="Frete aplicado / tonelada" valor={brl(resultado.frete.fretePorTonelada)} />
         </div>
 
-        {resultado.pendenciasTributarias.length > 0 && (
+        {resultado.pendenciasOperacionais.length > 0 && (
           <div className="rounded-card border border-ciano/40 bg-ciano/10 p-4">
             <span className="font-body text-xs font-semibold uppercase tracking-wide text-azulDark">
-              Pendências tributárias
+              Pendências operacionais
             </span>
             <ul className="mt-2 space-y-1.5">
-              {resultado.pendenciasTributarias.map((p, i) => (
+              {resultado.pendenciasOperacionais.map((p, i) => (
                 <li key={i} className="font-body text-[13px] leading-snug text-tinta">
                   {p}
                 </li>

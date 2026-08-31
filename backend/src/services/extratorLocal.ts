@@ -39,6 +39,7 @@ const CAMPOS_OBRIGATORIOS = [
   "estadoOrigem",
   "municipioDestino",
   "estadoDestino",
+  "fretePorTonelada",
 ] as const;
 
 /** Siglas de UF válidas — usado pra validar o estado e pra não confundir sigla com nome de cidade. */
@@ -158,6 +159,7 @@ const NOMES_CAMPOS: Record<string, string> = {
   estadoOrigem: "estado de origem (sigla, ex: MT)",
   municipioDestino: "cidade de destino (onde você vende)",
   estadoDestino: "estado de destino (sigla, ex: SP)",
+  fretePorTonelada: "frete por tonelada",
 };
 
 export function descreverCamposFaltando(faltando: string[]): string {

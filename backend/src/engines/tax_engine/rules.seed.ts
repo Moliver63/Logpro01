@@ -16,7 +16,7 @@ import type { RegraTributaria } from "../../types/domain.js";
  * — este é o pendency explícito do item 16.10 do prompt de especificação.
  */
 
-const HOJE = new Date().toISOString().slice(0, 10);
+const VIGENCIA_REFERENCIA = "2024-01-01";
 
 export const seedTaxRules: RegraTributaria[] = [
   // ---- Operação de referência 1: Alto Taquari-MT -> Rancharia-SP, SOJA ----
@@ -30,7 +30,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 1.4,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:Precificacao_Agricola.xlsx",
     versao: 1,
     ativo: true,
@@ -45,7 +45,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 1.155,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:Precificacao_Agricola.xlsx",
     versao: 1,
     ativo: true,
@@ -60,7 +60,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 5.32,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:Precificacao_Agricola.xlsx",
     versao: 1,
     ativo: true,
@@ -75,7 +75,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 3.0911,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:Precificacao_Agricola.xlsx",
     versao: 1,
     ativo: true,
@@ -90,7 +90,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 0.14,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:Precificacao_Agricola.xlsx",
     versao: 1,
     ativo: true,
@@ -111,7 +111,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 0.91,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:PRECIFICACAO_OFICIAL.xlsx",
     versao: 1,
     ativo: true,
@@ -126,7 +126,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 0.098,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:PRECIFICACAO_OFICIAL.xlsx",
     versao: 1,
     ativo: true,
@@ -146,7 +146,7 @@ export const seedTaxRules: RegraTributaria[] = [
       tipo: "DIFERIMENTO",
       fonte: "planilha_referencia:PRECIFICACAO_OFICIAL.xlsx",
     },
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:PRECIFICACAO_OFICIAL.xlsx",
     versao: 1,
     ativo: true,
@@ -161,7 +161,7 @@ export const seedTaxRules: RegraTributaria[] = [
     tipoOperacao: "SOBRE_RODAS",
     valorFixoPorSaca: 0.05712,
     baseDeCalculo: "VALOR_POR_SACA",
-    vigenciaInicio: HOJE,
+    vigenciaInicio: VIGENCIA_REFERENCIA,
     fonte: "planilha_referencia:PRECIFICACAO_OFICIAL.xlsx",
     versao: 1,
     ativo: true,

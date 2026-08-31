@@ -68,7 +68,9 @@ export function useOperationForm() {
     form.estadoOrigem.length === 2 &&
     form.estadoDestino.length === 2 &&
     form.municipioOrigem.trim() !== "" &&
-    form.municipioDestino.trim() !== "";
+    form.municipioDestino.trim() !== "" &&
+    form.fretePorTonelada !== "" &&
+    Number(form.fretePorTonelada) > 0;
 
   const paraOperacaoInput = (): OperacaoInput => ({
     mercadoria: {

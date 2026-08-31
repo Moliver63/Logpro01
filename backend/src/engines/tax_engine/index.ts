@@ -12,6 +12,8 @@ export interface TaxEngineQuery {
   tipoOperacao: string;
   valorPorSaca: number; // preço de compra por saca — base mais comum
   quantidadeSacas: number;
+  dataBase?: string; // ISO date; usa data da operacao quando disponivel
+  dataOperacao?: string; // alias aceito por compatibilidade semantica
 }
 
 /**
@@ -57,8 +59,8 @@ export class TaxEngine {
   constructor(private readonly regras: RegraTributaria[]) {}
 
   calcular(query: TaxEngineQuery): ResultadoTributario {
-    const hoje = new Date();
-    const candidatas = this.regras.filter((r) => this.combina(r, query, hoje));
+    const dataBase = dataBaseDaQuery(query);
+    const candidatas = this.regras.filter((r) => this.combina(r, query, dataBase));
 
     // Agrupa por tributo: se houver mais de uma regra vigente para o mesmo
     // tributo no mesmo cenário, isso é uma inconsistência de cadastro — não
@@ -115,8 +117,9 @@ export class TaxEngine {
 
   /** Lista tributos conhecidos pelo motor sem cobertura para este cenário — usado pela UI para avisar o usuário antes mesmo de calcular. */
   tributosSemCobertura(query: TaxEngineQuery, tributosEsperados: string[]): string[] {
+    const dataBase = dataBaseDaQuery(query);
     const cobertos = new Set(
-      this.regras.filter((r) => this.combina(r, query, new Date())).map((r) => r.tributo)
+      this.regras.filter((r) => this.combina(r, query, dataBase)).map((r) => r.tributo)
     );
     return tributosEsperados.filter((t) => !cobertos.has(t as never));
   }
@@ -174,4 +177,9 @@ export class TaxEngine {
       fonte: regra.fonte,
     };
   }
+}
+
+function dataBaseDaQuery(query: TaxEngineQuery): Date {
+  const valor = query.dataBase ?? query.dataOperacao;
+  return valor ? new Date(`${valor}T00:00:00.000Z`) : new Date();
 }
