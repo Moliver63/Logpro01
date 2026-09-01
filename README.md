@@ -75,11 +75,13 @@ desenvolvimento, defina `PERMITIR_CORS_LOCALHOST=true`.
 cd backend && npm test
 ```
 
-43 testes cobrindo o motor de cálculo contra os números das planilhas de
+54 testes cobrindo o motor de cálculo contra os números das planilhas de
 referência, a validação de entrada, o extrator local (incluindo a regressão
 de inversão origem/destino), a persistência (`calculoService`, incluindo
-idempotência e replay), e a integração Transerve. Rodar antes de qualquer
-commit.
+idempotência e replay), o cálculo automático de distância rodoviária
+(OpenStreetMap/OSRM, com mocks — nenhum teste bate na rede), os coeficientes
+vigentes do piso mínimo ANTT e a integração Transerve. Rodar antes de
+qualquer commit.
 
 Dois bugs já escaparam de typecheck e build e só apareceram em teste ou em
 runtime: um arredondamento no `tax_engine` que vazava
@@ -99,6 +101,7 @@ dois têm teste de regressão fixando o comportamento.
   diferentes retorna `409`. A chave é escopada por usuário e o hash
   normalizado do input fica persistido para auditoria.
 - `POST /api/operations/simular` — compara até 10 cenários e aponta o melhor
+  (completa a distância pela rota real quando só origem/destino são informados)
 - `GET /api/tax-rules` — lista as regras tributárias cadastradas
 
 **Referência de preço**
@@ -108,9 +111,11 @@ dois têm teste de regressão fixando o comportamento.
   cobrir o produto, cai para a Alpha Vantage (Chicago/CBOT). Produto sem
   cobertura retorna pendência explícita, nunca um valor inventado.
 - `POST /api/freight-reference/antt` — calcula uma referência de piso mínimo
-  ANTT quando houver quantidade, peso por saca, distância e eixos. Se faltar
-  dado ou coeficiente vigente, retorna pendência explícita em vez de inventar
-  frete.
+  ANTT quando houver quantidade, peso por saca, distância e eixos. Se a
+  distância não for informada mas houver município/UF de origem e destino,
+  ela é calculada pela rota rodoviária real (OpenStreetMap/OSRM, gratuito)
+  e marcada como `api_externa`. Se faltar dado ou coeficiente vigente,
+  retorna pendência explícita em vez de inventar frete.
 
 **Assistente**
 
@@ -195,6 +200,29 @@ clientes, essa fonte precisa ser renegociada diretamente com a CEPEA antes
 de continuar em uso. A atribuição visível na interface é exigência da
 licença, não escolha estética.
 
+## Piso mínimo ANTT e distância da rota
+
+O piso mínimo (Lei 13.703/2018) usa os coeficientes da **Resolução ANTT
+nº 6.084, de 16/07/2026** (Tabela A, granel sólido), versionados em
+`backend/src/engines/freight_engine/piso_minimo/rules.seed.ts` — a versão
+anterior ficou intacta e expirada, como manda a regra de nunca sobrescrever
+regra vigente. Conforme a Resolução ANTT nº 6.076/2026, contam todos os
+eixos, inclusive suspensos.
+
+Quando a operação informa eixos mas não informa distância, o sistema tenta
+calculá-la pela **rota rodoviária real** entre os municípios de origem e
+destino, usando serviços públicos e gratuitos: geocodificação
+[Nominatim](https://nominatim.openstreetmap.org) e roteirização
+[OSRM](https://router.project-osrm.org), ambos sobre dados OpenStreetMap.
+A distância calculada entra no resultado marcada como `api_externa` (nunca
+se confunde com valor informado pelo usuário), com cache em memória para
+respeitar o limite de uso dos serviços. Se a consulta falhar, o piso não é
+verificado e a operação recebe pendência explícita — nunca uma distância
+estimada.
+
+Dados de geocodificação e rota: **© OpenStreetMap contributors**, licença
+ODbL.
+
 ## O que foi deixado de fora de propósito
 
 Marketplace público, match automático comprador↔vendedor, negociação na
@@ -213,10 +241,14 @@ escrever código contra endpoints possivelmente indisponíveis.
 
 1. Validar as regras tributárias seed com um contador/especialista antes de
    qualquer uso com cliente real.
-2. Confirmar os coeficientes vigentes do piso mínimo ANTT em
-   `calculadorafrete.antt.gov.br` e cadastrar uma nova versão da regra — a
-   atual está com vigência deliberadamente expirada, para forçar pendência
-   em vez de calcular com dado velho.
+2. ~~Confirmar os coeficientes vigentes do piso mínimo ANTT~~ — **feito**:
+   cadastrados os coeficientes da Resolução ANTT nº 6.084, de 16/07/2026
+   (DOU de 17/07/2026), Tabela A, granel sólido, como regra versão 2. A ANTT
+   reajusta os valores semestralmente (janeiro/julho) e por gatilho de
+   diesel (±5%), então a regra v2 tem `vigenciaFim` e o sistema volta a
+   retornar pendência explícita quando ela expirar — nunca calcula com
+   coeficiente vencido. Renovar em janeiro/2027 (ou antes, se houver
+   reajuste por diesel) cadastrando uma **nova versão**, sem editar a v2.
 3. Cadastrar mais combinações de origem/destino/produto — hoje só há
    cobertura para os dois cenários das planilhas fornecidas; qualquer outra
    UF retorna pendência (comportamento esperado, não é bug).
