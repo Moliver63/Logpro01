@@ -6,11 +6,13 @@ export function UserMenu({
   emAdmin,
   onIrParaAdmin,
   onVoltarAoCalculo,
+  compacto = false,
 }: {
   usuario: Usuario;
   emAdmin: boolean;
   onIrParaAdmin: () => void;
   onVoltarAoCalculo: () => void;
+  compacto?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -36,20 +38,29 @@ export function UserMenu({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setAberto((v) => !v)}
-        className="flex items-center gap-2 rounded-card px-1.5 py-1 transition-colors hover:bg-white/10"
+        className={`flex items-center gap-2 rounded-card transition-colors hover:bg-papel ${
+          compacto ? "h-10 w-10 justify-center" : "w-full px-2 py-2 text-left"
+        }`}
         aria-label="Menu do usuário"
+        title="Menu do usuário"
       >
         {usuario.avatarUrl ? (
           <img src={usuario.avatarUrl} alt="" className="h-7 w-7 rounded-full" />
         ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 font-body text-xs text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-navy font-body text-xs text-white">
             {usuario.nome.charAt(0).toUpperCase()}
+          </span>
+        )}
+        {!compacto && (
+          <span className="min-w-0">
+            <span className="block truncate font-body text-sm font-semibold text-tinta">{usuario.nome}</span>
+            <span className="block truncate font-body text-[11px] text-tintaSuave">{usuario.email}</span>
           </span>
         )}
       </button>
 
       {aberto && (
-        <div className="absolute right-0 top-11 z-20 w-60 rounded-card border border-borda bg-white p-1.5 shadow-lg">
+        <div className={`absolute bottom-12 z-50 w-60 rounded-card border border-borda bg-white p-1.5 shadow-xl shadow-navy/15 ${compacto ? "left-12" : "left-0"}`}>
           <div className="border-b border-borda px-3 py-2.5">
             <p className="truncate font-body text-sm font-medium text-tinta">{usuario.nome}</p>
             <p className="truncate font-body text-[11px] text-tintaSuave">{usuario.email}</p>

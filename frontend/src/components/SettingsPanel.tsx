@@ -47,10 +47,12 @@ export function SettingsPanel({
   form,
   onAbrirFormulario,
   onAplicarPadroes,
+  compacto = false,
 }: {
   form: FormState;
   onAbrirFormulario: () => void;
   onAplicarPadroes: () => void;
+  compacto?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const [preferencias, setPreferencias] = useState<PreferenciasOperacao>(() => carregarPreferencias());
@@ -106,12 +108,14 @@ export function SettingsPanel({
   }
 
   return (
-    <div ref={ref} className="fixed bottom-4 left-4 z-40">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setAberto((v) => !v)}
         aria-label="Configurações"
         title="Configurações"
-        className="relative flex h-11 w-11 items-center justify-center rounded-card border border-borda bg-white text-tintaSuave shadow-lg shadow-navy/10 transition-colors hover:border-azul/30 hover:text-tinta"
+        className={`relative flex items-center gap-2 rounded-card text-tintaSuave transition-colors hover:bg-papel hover:text-tinta ${
+          compacto ? "h-10 w-10 justify-center" : "w-full px-2 py-2 text-left"
+        }`}
       >
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
           <path
@@ -134,10 +138,11 @@ export function SettingsPanel({
             {totalFixos}
           </span>
         )}
+        {!compacto && <span className="font-body text-sm font-semibold text-tinta">Configurações</span>}
       </button>
 
       {aberto && (
-          <aside className="absolute bottom-14 left-0 flex max-h-[calc(100vh-96px)] w-[min(calc(100vw-32px),390px)] flex-col overflow-hidden rounded-card border border-borda bg-white shadow-2xl shadow-navy/20">
+          <aside className={`absolute bottom-12 flex max-h-[calc(100vh-96px)] w-[min(calc(100vw-32px),390px)] flex-col overflow-hidden rounded-card border border-borda bg-white shadow-2xl shadow-navy/20 ${compacto ? "left-12" : "left-0"}`}>
             <header className="border-b border-borda bg-white px-4 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>

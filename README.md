@@ -35,7 +35,7 @@ logpro/
     src/components/CalculationMemory.tsx   "ver memória de cálculo"
     src/components/ScenarioSimulator.tsx
     src/components/PriceReferenceWidget.tsx
-    src/components/SettingsPanel.tsx       engrenagem do header
+    src/components/SettingsPanel.tsx       preferencias abertas pela lateral
 ```
 
 ## Como rodar localmente
