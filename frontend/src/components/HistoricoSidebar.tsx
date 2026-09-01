@@ -82,7 +82,7 @@ export function HistoricoSidebar({
                 Log<span className="text-azul">Pro</span>
               </span>
               <span className="mt-1.5 block truncate font-body text-[11px] uppercase tracking-widest text-tintaSuave">
-                Gestão logística inteligente
+                Operações de grãos
               </span>
             </span>
           )}
