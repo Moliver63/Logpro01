@@ -15,7 +15,8 @@ operationsRouter.post("/calcular", async (req, res, next) => {
       return res.status(400).json({ erro: "Entrada inválida", detalhes: parsed.error.flatten() });
     }
 
-    const { operationId, resultado } = await executarCalculo(parsed.data);
+    // Vincula a consulta a quem está logado, para aparecer no dashboard dele.
+    const { operationId, resultado } = await executarCalculo(parsed.data, req.usuario?.id);
     return res.json({ operationId, resultado });
   } catch (erro) {
     return next(erro);

@@ -169,7 +169,7 @@ async function chamarGeminiComRetry(historico: Content[], tentativas = 4): Promi
   throw ultimoErro;
 }
 
-async function tentarComGemini(mensagens: MensagemChat[]): Promise<RespostaChat> {
+async function tentarComGemini(mensagens: MensagemChat[], userId?: string | null): Promise<RespostaChat> {
   const historico: Content[] = mensagens.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
@@ -214,7 +214,7 @@ async function tentarComGemini(mensagens: MensagemChat[]): Promise<RespostaChat>
       continue;
     }
 
-    const resultado = await executarCalculo(parsed.data);
+    const resultado = await executarCalculo(parsed.data, userId);
     resultadoOperacao = resultado.resultado;
     operationId = resultado.operationId;
 
@@ -249,7 +249,7 @@ async function chamarGroqComRetry(groq: Groq, historico: Groq.Chat.ChatCompletio
   throw ultimoErro;
 }
 
-async function tentarComGroq(mensagens: MensagemChat[]): Promise<RespostaChat> {
+async function tentarComGroq(mensagens: MensagemChat[], userId?: string | null): Promise<RespostaChat> {
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   const historico: Groq.Chat.ChatCompletionMessageParam[] = [
@@ -295,7 +295,7 @@ async function tentarComGroq(mensagens: MensagemChat[]): Promise<RespostaChat> {
       continue;
     }
 
-    const resultado = await executarCalculo(parsed.data);
+    const resultado = await executarCalculo(parsed.data, userId);
     resultadoOperacao = resultado.resultado;
     operationId = resultado.operationId;
 
@@ -307,7 +307,7 @@ async function tentarComGroq(mensagens: MensagemChat[]): Promise<RespostaChat> {
 
 /* ---------------- Provedor 3: extrator local (sem IA nenhuma) ---------------- */
 
-async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<RespostaChat> {
+async function responderComFallbackLocal(mensagens: MensagemChat[], userId?: string | null): Promise<RespostaChat> {
   const textoUsuario = mensagens.filter((m) => m.role === "user").map((m) => m.content).join(" ");
   const { campos, faltando } = extrairDoTexto(textoUsuario);
 
@@ -339,7 +339,7 @@ async function responderComFallbackLocal(mensagens: MensagemChat[]): Promise<Res
     };
   }
 
-  const resultado = await executarCalculo(parsed.data);
+  const resultado = await executarCalculo(parsed.data, userId);
   return {
     resposta: `Calculei com o que você escreveu. Vale conferir se os dados abaixo batem: ${
       resultado.resultado.viavel ? "operação viável" : "operação não viável"
@@ -389,7 +389,7 @@ chatRouter.post("/", async (req, res) => {
 
   if (totalChavesConfiguradas() > 0 && !circuitoAberto("gemini")) {
     try {
-      const resultado = await tentarComGemini(mensagens);
+      const resultado = await tentarComGemini(mensagens, req.usuario?.id);
       registrarSucesso("gemini");
       return res.json(resultado);
     } catch (erro) {
@@ -402,7 +402,7 @@ chatRouter.post("/", async (req, res) => {
 
   if (process.env.GROQ_API_KEY && !circuitoAberto("groq")) {
     try {
-      const resultado = await tentarComGroq(mensagens);
+      const resultado = await tentarComGroq(mensagens, req.usuario?.id);
       registrarSucesso("groq");
       return res.json(resultado);
     } catch (erro) {
@@ -414,7 +414,7 @@ chatRouter.post("/", async (req, res) => {
   }
 
   try {
-    return res.json(await responderComFallbackLocal(mensagens));
+    return res.json(await responderComFallbackLocal(mensagens, req.usuario?.id));
   } catch (erro) {
     console.error("Erro no fallback local:", erro);
     return res.status(500).json({ erro: "Falha ao processar a conversa." });

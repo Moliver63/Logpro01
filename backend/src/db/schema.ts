@@ -1,24 +1,38 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, doublePrecision, boolean } from "drizzle-orm/pg-core";
 
 /**
- * Schema inicial do LogPro (item 11 da especificação).
+ * Schema do LogPro.
  *
- * Usa SQLite (better-sqlite3) para rodar localmente sem depender de infra
- * externa. A API do drizzle-orm para tabelas relacionais é praticamente a
- * mesma entre sqlite-core e pg-core — migrar para Postgres depois (mesma
- * linha de código da MecProAI) é trocar os imports de `drizzle-orm/sqlite-core`
- * para `drizzle-orm/pg-core` e os tipos de coluna equivalentes, sem reescrever
- * a lógica de negócio (que vive nos engines, não aqui).
+ * Postgres (Render). Antes era SQLite local, trocado porque o disco do
+ * plano gratuito é efêmero: o banco era recriado a cada redeploy, o que
+ * tornava impossível ter contas de usuário e histórico de consultas — tudo
+ * sumiria no deploy seguinte.
+ *
+ * Valores monetários usam doublePrecision para preservar exatamente o
+ * comportamento numérico anterior (`real` do SQLite era float64 na
+ * prática), evitando qualquer alteração silenciosa nos números já
+ * validados contra as planilhas de referência.
  */
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(),
   email: text("email").notNull().unique(),
   criadoEm: text("criado_em").notNull(),
+
+  // --- Autenticação e controle de acesso ---
+  // googleId identifica a conta Google (campo `sub` do perfil). É ele, não
+  // o e-mail, que casa o login com o usuário: o e-mail pode mudar, o sub não.
+  googleId: text("google_id").unique(),
+  avatarUrl: text("avatar_url"),
+  // "ADMIN" gerencia usuários; "USUARIO" só enxerga as próprias consultas.
+  papel: text("papel").notNull().default("USUARIO"),
+  // Admin pode desativar sem apagar — o histórico da pessoa é preservado.
+  ativo: boolean("ativo").notNull().default(true),
+  ultimoAcessoEm: text("ultimo_acesso_em"),
 });
 
-export const companies = sqliteTable("companies", {
+export const companies = pgTable("companies", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(),
   cnpj: text("cnpj"),
@@ -26,19 +40,19 @@ export const companies = sqliteTable("companies", {
   criadoEm: text("criado_em").notNull(),
 });
 
-export const products = sqliteTable("products", {
+export const products = pgTable("products", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(), // SOJA, MILHO, TRIGO...
-  pesoPadraoSacaKg: real("peso_padrao_saca_kg").notNull().default(60),
+  pesoPadraoSacaKg: doublePrecision("peso_padrao_saca_kg").notNull().default(60),
 });
 
-export const locations = sqliteTable("locations", {
+export const locations = pgTable("locations", {
   id: text("id").primaryKey(),
   municipio: text("municipio").notNull(),
   estado: text("estado").notNull(), // UF
 });
 
-export const taxRules = sqliteTable("tax_rules", {
+export const taxRules = pgTable("tax_rules", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(),
   tributo: text("tributo").notNull(),
@@ -46,18 +60,18 @@ export const taxRules = sqliteTable("tax_rules", {
   estadoDestino: text("estado_destino").notNull(),
   produto: text("produto").notNull(),
   tipoOperacao: text("tipo_operacao").notNull(),
-  aliquotaPercentual: real("aliquota_percentual"),
-  valorFixoPorSaca: real("valor_fixo_por_saca"),
+  aliquotaPercentual: doublePrecision("aliquota_percentual"),
+  valorFixoPorSaca: doublePrecision("valor_fixo_por_saca"),
   baseDeCalculo: text("base_de_calculo").notNull(),
   beneficioFiscalJson: text("beneficio_fiscal_json"), // JSON serializado
   vigenciaInicio: text("vigencia_inicio").notNull(),
   vigenciaFim: text("vigencia_fim"),
   fonte: text("fonte").notNull(),
   versao: integer("versao").notNull().default(1),
-  ativo: integer("ativo", { mode: "boolean" }).notNull().default(true),
+  ativo: boolean("ativo").notNull().default(true),
 });
 
-export const taxBenefits = sqliteTable("tax_benefits", {
+export const taxBenefits = pgTable("tax_benefits", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(),
   tipo: text("tipo").notNull(),
@@ -67,28 +81,31 @@ export const taxBenefits = sqliteTable("tax_benefits", {
   vigenciaFim: text("vigencia_fim"),
 });
 
-export const operations = sqliteTable("operations", {
+export const operations = pgTable("operations", {
   id: text("id").primaryKey(),
   companyId: text("company_id"),
+  // Dono da consulta. Nulo em operações anteriores ao login (e em cálculos
+  // feitos sem sessão), por isso não é notNull.
+  userId: text("user_id"),
   produto: text("produto").notNull(),
-  quantidadeSacas: real("quantidade_sacas").notNull(),
+  quantidadeSacas: doublePrecision("quantidade_sacas").notNull(),
   criadoEm: text("criado_em").notNull(),
   status: text("status").notNull(), // VIAVEL | NAO_VIAVEL
 });
 
-export const operationItems = sqliteTable("operation_items", {
+export const operationItems = pgTable("operation_items", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
   descricao: text("descricao").notNull(),
-  valorPorSaca: real("valor_por_saca"),
-  valorTotal: real("valor_total").notNull(),
+  valorPorSaca: doublePrecision("valor_por_saca"),
+  valorTotal: doublePrecision("valor_total").notNull(),
   origemDado: text("origem_dado").notNull(),
 });
 
-export const purchases = sqliteTable("purchases", {
+export const purchases = pgTable("purchases", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
-  precoPorSaca: real("preco_por_saca").notNull(),
+  precoPorSaca: doublePrecision("preco_por_saca").notNull(),
   municipioOrigem: text("municipio_origem").notNull(),
   estadoOrigem: text("estado_origem").notNull(),
   fornecedor: text("fornecedor"),
@@ -96,10 +113,10 @@ export const purchases = sqliteTable("purchases", {
   dataPrevistaPagamento: text("data_prevista_pagamento"),
 });
 
-export const sales = sqliteTable("sales", {
+export const sales = pgTable("sales", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
-  precoPorSaca: real("preco_por_saca").notNull(),
+  precoPorSaca: doublePrecision("preco_por_saca").notNull(),
   municipioDestino: text("municipio_destino").notNull(),
   estadoDestino: text("estado_destino").notNull(),
   comprador: text("comprador"),
@@ -107,60 +124,74 @@ export const sales = sqliteTable("sales", {
   dataPrevistaRecebimento: text("data_prevista_recebimento"),
 });
 
-export const freightQuotes = sqliteTable("freight_quotes", {
+export const freightQuotes = pgTable("freight_quotes", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
   provedor: text("provedor").notNull(),
-  fretePorTonelada: real("frete_por_tonelada").notNull(),
-  freteTotal: real("frete_total").notNull(),
-  distanciaKm: real("distancia_km"),
+  fretePorTonelada: doublePrecision("frete_por_tonelada").notNull(),
+  freteTotal: doublePrecision("frete_total").notNull(),
+  distanciaKm: doublePrecision("distancia_km"),
   origemDado: text("origem_dado").notNull(),
   criadoEm: text("criado_em").notNull(),
 });
 
-export const expenses = sqliteTable("expenses", {
+export const expenses = pgTable("expenses", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
   descricao: text("descricao").notNull(),
-  valorPorSaca: real("valor_por_saca"),
-  valorTotal: real("valor_total").notNull(),
+  valorPorSaca: doublePrecision("valor_por_saca"),
+  valorTotal: doublePrecision("valor_total").notNull(),
 });
 
-export const taxCalculations = sqliteTable("tax_calculations", {
+export const taxCalculations = pgTable("tax_calculations", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
   taxRuleId: text("tax_rule_id").notNull(),
   versaoRegra: integer("versao_regra").notNull(),
-  base: real("base").notNull(),
-  valorBruto: real("valor_bruto").notNull(),
-  valorComBeneficio: real("valor_com_beneficio").notNull(),
+  base: doublePrecision("base").notNull(),
+  valorBruto: doublePrecision("valor_bruto").notNull(),
+  valorComBeneficio: doublePrecision("valor_com_beneficio").notNull(),
   calculadoEm: text("calculado_em").notNull(),
 });
 
-export const operationResults = sqliteTable("operation_results", {
+export const operationResults = pgTable("operation_results", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
-  receitaTotal: real("receita_total").notNull(),
-  custoMercadoria: real("custo_mercadoria").notNull(),
-  custoLogistico: real("custo_logistico").notNull(),
-  custoTributario: real("custo_tributario").notNull(),
-  outrosCustos: real("outros_custos").notNull(),
-  custoTotal: real("custo_total").notNull(),
-  resultado: real("resultado").notNull(),
-  margemPercentual: real("margem_percentual").notNull(),
-  precoMinimoVendaPorSaca: real("preco_minimo_venda_por_saca").notNull(),
-  viavel: integer("viavel", { mode: "boolean" }).notNull(),
+  receitaTotal: doublePrecision("receita_total").notNull(),
+  custoMercadoria: doublePrecision("custo_mercadoria").notNull(),
+  custoLogistico: doublePrecision("custo_logistico").notNull(),
+  custoTributario: doublePrecision("custo_tributario").notNull(),
+  outrosCustos: doublePrecision("outros_custos").notNull(),
+  custoTotal: doublePrecision("custo_total").notNull(),
+  resultado: doublePrecision("resultado").notNull(),
+  margemPercentual: doublePrecision("margem_percentual").notNull(),
+  precoMinimoVendaPorSaca: doublePrecision("preco_minimo_venda_por_saca").notNull(),
+  viavel: boolean("viavel").notNull(),
   calculadoEm: text("calculado_em").notNull(),
 });
 
-export const scenarioSimulations = sqliteTable("scenario_simulations", {
+export const scenarioSimulations = pgTable("scenario_simulations", {
   id: text("id").primaryKey(),
   operationId: text("operation_id").notNull(),
   nome: text("nome").notNull(),
-  precoCompraPorSaca: real("preco_compra_por_saca").notNull(),
-  precoVendaPorSaca: real("preco_venda_por_saca").notNull(),
-  fretePorTonelada: real("frete_por_tonelada").notNull(),
-  margemPercentual: real("margem_percentual").notNull(),
-  resultado: real("resultado").notNull(),
+  precoCompraPorSaca: doublePrecision("preco_compra_por_saca").notNull(),
+  precoVendaPorSaca: doublePrecision("preco_venda_por_saca").notNull(),
+  fretePorTonelada: doublePrecision("frete_por_tonelada").notNull(),
+  margemPercentual: doublePrecision("margem_percentual").notNull(),
+  resultado: doublePrecision("resultado").notNull(),
   criadoEm: text("criado_em").notNull(),
+});
+
+/**
+ * Sessões de login.
+ *
+ * Ficam no banco em vez de só num JWT para que o admin consiga revogar
+ * acesso de fato: desativar um usuário derruba as sessões dele na hora, em
+ * vez de esperar um token expirar.
+ */
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  criadoEm: text("criado_em").notNull(),
+  expiraEm: text("expira_em").notNull(),
 });

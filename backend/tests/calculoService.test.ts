@@ -15,8 +15,10 @@ import { execSync } from "node:child_process";
  *
  *   TypeError: Transaction function cannot return a promise
  *
- * A transação do better-sqlite3 é síncrona e rejeita callback `async`.
- * Este teste cobre justamente a fronteira entre cálculo e persistência.
+ * Este teste cobre a fronteira entre cálculo e persistência. O bug original
+ * era uma transação síncrona do better-sqlite3 recebendo callback `async`;
+ * hoje o banco é Postgres (transação assíncrona), mas a fronteira continua
+ * sendo o ponto que os testes de motor não alcançam.
  */
 
 const OPERACAO: OperacaoInput = {
@@ -37,7 +39,7 @@ beforeEach(async () => {
 });
 
 describe("executarCalculo — caminho real usado pela API e pelo chat", () => {
-  it("calcula e persiste sem lançar (transação do better-sqlite3 é síncrona)", async () => {
+  it("calcula e persiste sem lançar", async () => {
     const { operationId, resultado } = await executarCalculo(OPERACAO);
 
     expect(operationId).toBeTruthy();

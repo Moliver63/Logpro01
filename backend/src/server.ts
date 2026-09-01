@@ -1,11 +1,16 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
 import { operationsRouter } from "./routes/operations.js";
 import { taxRulesRouter } from "./routes/taxRules.js";
 import { priceReferenceRouter } from "./routes/priceReference.js";
 import { chatRouter } from "./routes/chat.js";
 import { transerveRouter } from "./routes/transerve.js";
+import { authRouter } from "./routes/auth.js";
+import { dashboardRouter } from "./routes/dashboard.js";
+import { adminRouter } from "./routes/admin.js";
+import { carregarUsuario, exigirLogin } from "./middleware/auth.js";
 
 const app = express();
 
@@ -28,6 +33,9 @@ const ORIGENS_PERMITIDAS = (
 
 app.use(
   cors({
+    // credentials: true é obrigatório para o cookie de sessão viajar entre
+    // o frontend e o backend, que ficam em domínios diferentes no Render.
+    credentials: true,
     origin(origin, callback) {
       // Requisições sem Origin (curl, healthcheck do Render, apps nativos)
       // são permitidas — o navegador é quem envia Origin.
@@ -45,6 +53,8 @@ app.use(
 );
 
 app.use(express.json({ limit: "256kb" }));
+app.use(cookieParser());
+app.use(carregarUsuario);
 
 /** Limite geral — protege contra abuso das rotas de cálculo. */
 const limiteGeral = rateLimit({
@@ -76,11 +86,19 @@ app.get("/api/health", (_req, res) =>
     timestamp: new Date().toISOString(),
   })
 );
-app.use("/api/operations", limiteGeral, operationsRouter);
-app.use("/api/tax-rules", limiteGeral, taxRulesRouter);
-app.use("/api/price-reference", limiteGeral, priceReferenceRouter);
-app.use("/api/chat", limiteChat, chatRouter);
-app.use("/api/transerve", limiteGeral, transerveRouter);
+// Rotas públicas: só health e o fluxo de login.
+app.use("/api/auth", limiteGeral, authRouter);
+
+// Daqui para baixo, tudo exige sessão. Além de proteger os dados, isso
+// impede que o endpoint de chat — que consome cota paga de IA — seja
+// chamado por quem não tem conta.
+app.use("/api/operations", limiteGeral, exigirLogin, operationsRouter);
+app.use("/api/tax-rules", limiteGeral, exigirLogin, taxRulesRouter);
+app.use("/api/price-reference", limiteGeral, exigirLogin, priceReferenceRouter);
+app.use("/api/chat", limiteChat, exigirLogin, chatRouter);
+app.use("/api/transerve", limiteGeral, exigirLogin, transerveRouter);
+app.use("/api/dashboard", limiteGeral, dashboardRouter);
+app.use("/api/admin", limiteGeral, adminRouter);
 
 /**
  * Handler de erro central. O Express 4 não captura exceção lançada dentro

@@ -1,11 +1,31 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import pg from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema.js";
 
-const DB_PATH = process.env.DATABASE_PATH ?? "./logpro.db";
+/**
+ * Conexão com o Postgres (Render).
+ *
+ * Antes era SQLite em arquivo local. Trocado porque o disco do plano
+ * gratuito do Render é efêmero — o banco era recriado a cada redeploy, o
+ * que inviabiliza contas de usuário e histórico de consultas.
+ *
+ * `DATABASE_URL` é fornecida pelo Render. Em produção a conexão exige TLS,
+ * mas o certificado é interno da plataforma, daí `rejectUnauthorized: false`.
+ */
+const connectionString = process.env.DATABASE_URL;
 
-const sqlite = new Database(DB_PATH);
-sqlite.pragma("journal_mode = WAL");
+if (!connectionString) {
+  throw new Error(
+    "DATABASE_URL não configurada. Aponte para o Postgres (no Render, use a Internal Database URL)."
+  );
+}
 
-export const db = drizzle(sqlite, { schema });
-export { sqlite };
+const precisaSsl = !/localhost|127\.0\.0\.1/.test(connectionString);
+
+export const pool = new pg.Pool({
+  connectionString,
+  ssl: precisaSsl ? { rejectUnauthorized: false } : undefined,
+  max: 5,
+});
+
+export const db = drizzle(pool, { schema });

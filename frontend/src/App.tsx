@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { OperationForm } from "./components/OperationForm";
 import { useOperationForm } from "./components/OperationForm/useOperationForm";
 import { ResultDashboard } from "./components/ResultDashboard";
@@ -6,14 +6,33 @@ import { CalculationMemory } from "./components/CalculationMemory";
 import { ScenarioSimulator } from "./components/ScenarioSimulator";
 import { ChatAssistant } from "./components/ChatAssistant";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { calcularOperacao, simularCenarios } from "./api/client";
+import { LoginScreen } from "./components/LoginScreen";
+import { HistoricoSidebar } from "./components/HistoricoSidebar";
+import { AdminPanel } from "./components/AdminPanel";
+import { UserMenu } from "./components/UserMenu";
+import { calcularOperacao, simularCenarios, getSessao, type Usuario } from "./api/client";
 import type { ResultadoOperacao, ResultadoCenario, Cenario } from "./types";
 
 type ModoEntrada = "formulario" | "chat";
+type Secao = "calculo" | "admin";
 
 export default function App() {
   const { form, set, pronto, paraOperacaoInput } = useOperationForm();
   const [modo, setModo] = useState<ModoEntrada>("chat");
+  const [secao, setSecao] = useState<Secao>("calculo");
+
+  // Sessão: `undefined` enquanto verifica, `null` quando deslogado.
+  const [usuario, setUsuario] = useState<Usuario | null | undefined>(undefined);
+  // Contador que força o histórico a recarregar após um cálculo novo.
+  const [versaoHistorico, setVersaoHistorico] = useState(0);
+
+  const erroLogin = new URLSearchParams(window.location.search).get("erro_login");
+
+  useEffect(() => {
+    getSessao()
+      .then((s) => setUsuario(s.usuario))
+      .catch(() => setUsuario(null));
+  }, []);
 
   const [resultado, setResultado] = useState<ResultadoOperacao | null>(null);
   const [calculando, setCalculando] = useState(false);
@@ -30,6 +49,8 @@ export default function App() {
     try {
       const { resultado: r } = await calcularOperacao(paraOperacaoInput());
       setResultado(r);
+      // A consulta acabou de ser salva: atualiza o histórico da barra lateral.
+      setVersaoHistorico((v) => v + 1);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao calcular a operação.");
     } finally {
@@ -48,6 +69,20 @@ export default function App() {
     } finally {
       setSimulando(false);
     }
+  }
+
+  // Enquanto verifica a sessão, evita piscar a tela de login para quem já
+  // está autenticado.
+  if (usuario === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-papel">
+        <span className="font-body text-sm text-tintaSuave">Carregando…</span>
+      </div>
+    );
+  }
+
+  if (usuario === null) {
+    return <LoginScreen erro={erroLogin} />;
   }
 
   return (
@@ -70,11 +105,24 @@ export default function App() {
               Motor de viabilidade
             </span>
             <SettingsPanel onAbrirFormulario={() => setModo("formulario")} />
+            <UserMenu
+              usuario={usuario}
+              emAdmin={secao === "admin"}
+              onIrParaAdmin={() => setSecao("admin")}
+              onVoltarAoCalculo={() => setSecao("calculo")}
+            />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      {secao === "admin" ? (
+        <main className="mx-auto max-w-6xl px-6 py-10">
+          <AdminPanel meuId={usuario.id} />
+        </main>
+      ) : (
+      <div className="mx-auto flex max-w-7xl">
+        <HistoricoSidebar recarregar={versaoHistorico} />
+        <main className="min-w-0 flex-1 px-6 py-10">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <span className="font-mono text-xs text-tintaSuave">01 / Nova operação</span>
@@ -102,7 +150,7 @@ export default function App() {
         </div>
 
         {modo === "chat" ? (
-          <ChatAssistant />
+          <ChatAssistant onConsultaRegistrada={() => setVersaoHistorico((v) => v + 1)} />
         ) : (
           <>
             <OperationForm form={form} set={set} />
@@ -154,7 +202,9 @@ export default function App() {
             )}
           </>
         )}
-      </main>
+        </main>
+      </div>
+      )}
 
       <footer className="mt-16 border-t border-borda bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">

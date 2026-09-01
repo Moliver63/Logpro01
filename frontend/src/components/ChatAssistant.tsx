@@ -16,7 +16,7 @@ const MENSAGEM_INICIAL: Turno = {
     "Me conta a operação: produto, quantas sacas, preço de compra e venda, origem e destino. Pode escrever do jeito que sair.",
 };
 
-export function ChatAssistant() {
+export function ChatAssistant({ onConsultaRegistrada }: { onConsultaRegistrada?: () => void } = {}) {
   const [turnos, setTurnos] = useState<Turno[]>([MENSAGEM_INICIAL]);
   const [entrada, setEntrada] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -48,6 +48,8 @@ export function ChatAssistant() {
           resultadoOperacao: resposta.resultadoOperacao,
         },
       ]);
+      // Se o assistente calculou algo, uma consulta nova foi salva.
+      if (resposta.resultadoOperacao) onConsultaRegistrada?.();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao conversar com o assistente.");
     } finally {

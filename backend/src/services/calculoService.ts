@@ -21,7 +21,9 @@ export async function montarDealEngine(): Promise<DealEngine> {
 }
 
 export async function executarCalculo(
-  input: OperacaoInput
+  input: OperacaoInput,
+  /** Dono da consulta, quando há sessão. Sem isso a operação fica órfã e não aparece no dashboard de ninguém. */
+  userId?: string | null
 ): Promise<{ operationId: string; resultado: ResultadoOperacao }> {
   const dealEngine = await montarDealEngine();
   const resultado = await dealEngine.calcular(input);
@@ -29,19 +31,19 @@ export async function executarCalculo(
   const operationId = randomUUID();
   const agora = new Date().toISOString();
 
-  // A transação do better-sqlite3 é SÍNCRONA: passar uma função `async` faz
-  // ele lançar "Transaction function cannot return a promise" em tempo de
-  // execução, derrubando toda operação válida com erro 500. Por isso o
-  // callback abaixo não é async e os inserts usam `.run()` em vez de await.
-  db.transaction((tx) => {
-    tx.insert(operations).values({
+  // No Postgres (node-postgres) a transação é assíncrona — ao contrário do
+  // better-sqlite3, que era síncrono e rejeitava callback `async`. Aqui o
+  // callback É async e os inserts são aguardados.
+  await db.transaction(async (tx) => {
+    await tx.insert(operations).values({
       id: operationId,
+      userId: userId ?? null,
       produto: input.mercadoria.produto,
       quantidadeSacas: input.mercadoria.quantidadeSacas,
       criadoEm: agora,
       status: resultado.viavel ? "VIAVEL" : "NAO_VIAVEL",
-    }).run();
-    tx.insert(operationResults).values({
+    });
+    await tx.insert(operationResults).values({
       id: randomUUID(),
       operationId,
       receitaTotal: resultado.receitaTotal.valor,
@@ -55,7 +57,7 @@ export async function executarCalculo(
       precoMinimoVendaPorSaca: resultado.precoMinimoVendaPorSaca,
       viavel: resultado.viavel,
       calculadoEm: agora,
-    }).run();
+    });
   });
 
   return { operationId, resultado };
