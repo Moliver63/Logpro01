@@ -1,4 +1,10 @@
-import type { OperacaoInput, ResultadoOperacao, Cenario, ResultadoCenario } from "../types";
+import type {
+  OperacaoInput,
+  ResultadoOperacao,
+  Cenario,
+  ResultadoCenario,
+  ResultadoReferenciaFreteAntt,
+} from "../types";
 
 // Em dev local, o vite.config.ts faz proxy de /api para o backend (localhost:3333),
 // então "" + "/api" funciona sem configurar nada. Em produção (Static Site na
@@ -56,6 +62,15 @@ export async function simularCenarios(
 
 export async function getReferenciaPreco(produto: string) {
   return get<import("../types").ResultadoReferenciaPreco>(`/price-reference/${produto}`);
+}
+
+export async function calcularReferenciaFreteAntt(input: {
+  quantidadeSacas?: number;
+  pesoPorSacaKg?: number;
+  distanciaKm?: number;
+  numeroEixos?: number;
+}) {
+  return post<ResultadoReferenciaFreteAntt>("/freight-reference/antt", input);
 }
 
 export interface MensagemChat {

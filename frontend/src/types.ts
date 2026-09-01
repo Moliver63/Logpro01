@@ -130,3 +130,15 @@ export interface ResultadoReferenciaPreco {
   fonte?: string;
   pendencia?: string;
 }
+
+export interface ResultadoReferenciaFreteAntt {
+  fonte: "ANTT";
+  aplicavel: boolean;
+  camposNecessarios: string[];
+  pendencias: string[];
+  toneladas?: number;
+  freteMinimoTotal?: number;
+  freteMinimoPorTonelada?: number;
+  pisoMinimoAntt?: ResultadoPisoMinimo;
+  observacao: string;
+}

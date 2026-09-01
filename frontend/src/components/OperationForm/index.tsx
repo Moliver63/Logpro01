@@ -1,6 +1,7 @@
 import type { FormState } from "./useOperationForm";
 import { Field, NumberField, TextField, SelectField, Card } from "../ui/Field";
 import { PriceReferenceWidget } from "../PriceReferenceWidget";
+import { FreightReferenceWidget } from "../FreightReferenceWidget";
 
 const UFS = [
   "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT",
@@ -142,6 +143,13 @@ export function OperationForm({ form, set }: Props) {
               max={9}
             />
           </Field>
+          <FreightReferenceWidget
+            quantidadeSacas={form.quantidadeSacas}
+            pesoPorSacaKg={form.pesoPorSacaKg}
+            distanciaKm={form.distanciaKm}
+            numeroEixos={form.numeroEixos}
+            onUsarFrete={(valor) => set("fretePorTonelada", valor)}
+          />
         </div>
       </Card>
 

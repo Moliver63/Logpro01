@@ -12,7 +12,7 @@ cima dele.
 
 ```
 logpro/
-  backend/    Node + Express + TypeScript + Drizzle + SQLite
+  backend/    Node + Express + TypeScript + Drizzle + Postgres
     src/engines/tax_engine/          motor tributário — nunca inventa regra
     src/engines/freight_engine/      motor de frete — adapters/providers
       piso_minimo/                   piso mínimo ANTT (Lei 13.703/2018)
@@ -46,7 +46,7 @@ logpro/
 cd backend
 cp .env.example .env   # preencher as chaves que for usar
 npm install
-npm run seed    # cria o banco SQLite local e carrega as regras tributárias de referência
+npm run seed    # cria/atualiza tabelas no Postgres e carrega as regras tributárias de referência
 npm run dev     # http://localhost:3333
 ```
 
@@ -99,6 +99,10 @@ dois têm teste de regressão fixando o comportamento.
   TRIGO, SORGO). Tenta a CEPEA primeiro (preço físico brasileiro); se não
   cobrir o produto, cai para a Alpha Vantage (Chicago/CBOT). Produto sem
   cobertura retorna pendência explícita, nunca um valor inventado.
+- `POST /api/freight-reference/antt` — calcula uma referência de piso mínimo
+  ANTT quando houver quantidade, peso por saca, distância e eixos. Se faltar
+  dado ou coeficiente vigente, retorna pendência explícita em vez de inventar
+  frete.
 
 **Assistente**
 

@@ -1,6 +1,6 @@
 # Estado Atual
 
-O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend Node/Express/TypeScript, SQLite via Drizzle e frontend React/Vite/Tailwind. O fluxo principal calcula receita, custo da mercadoria, frete, tributos, custos adicionais, margem, resultado por saca e checagem de piso minimo ANTT quando ha dados suficientes.
+O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend Node/Express/TypeScript, Postgres via Drizzle e frontend React/Vite/Tailwind. O fluxo principal calcula receita, custo da mercadoria, frete, tributos, custos adicionais, margem, resultado por saca e checagem de piso minimo ANTT quando ha dados suficientes.
 
 ## O que esta garantido
 
@@ -15,8 +15,9 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 
 - As regras tributarias seed cobrem apenas os cenarios de referencia documentados nas planilhas originais.
 - As regras seed ainda precisam de validacao por especialista tributario antes de uso comercial.
-- O provider de frete atual e manual. Ainda nao ha cotacao real via transportadora ou Transerve/Sapiens Agro conectada ao motor.
-- SQLite local e suficiente para desenvolvimento, mas nao e a base recomendada para producao.
+- O provider de frete atual e manual. Ainda nao ha cotacao real via transportadora ou Sapiens/SPIA conectada ao motor.
+- A rota `/api/freight-reference/antt` calcula referencia de piso minimo quando ha dados e coeficiente vigente; sem isso, retorna pendencia.
+- Postgres ja e a base atual, mas ainda falta consolidar migrations versionadas.
 - O historico persistido ainda guarda apenas resumo da operacao e do resultado, nao a memoria completa imutavel.
 
 ## Comandos de validacao
@@ -47,4 +48,3 @@ npx vite build
 - Frete informado abaixo do piso minimo ANTT impede viabilidade quando a checagem e aplicavel.
 - Falta de validacao do piso minimo ANTT torna o calculo incompleto.
 - Despesa adicional sem `valorTotal` ou `valorPorSaca` e rejeitada na entrada.
-

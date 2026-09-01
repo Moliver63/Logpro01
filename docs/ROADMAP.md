@@ -31,4 +31,5 @@ Prioridade dos proximos passos tecnicos do LogPro01.
 - Plugar um `FreightProvider` real, mantendo o contrato atual do `freight_engine`.
 - Registrar provedor, timestamp e origem da cotacao.
 - Comparar frete informado com cotacao real e piso minimo ANTT.
-
+- Avaliar Sapiens Fretes/SPIA ou outro fornecedor com API contratada para
+  preencher `freteReferenciaMercado` sem depender de digitacao manual.
