@@ -21,6 +21,14 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+/**
+ * Margem mínima operacional exigida pelas planilhas de referência
+ * ("Precificação Agrícola" e "PRECIFICAÇÃO OFICIAL", regra de validação:
+ * margem < 4% → operação não viável, "não fecha a conta"). Não é pendência
+ * de dado nem coeficiente fiscal — é critério comercial do negócio.
+ */
+export const MARGEM_MINIMA_OPERACIONAL_PERCENTUAL = 4;
+
 export class DealEngine {
   constructor(
     private readonly taxEngine: TaxEngine,
@@ -118,6 +126,7 @@ export class DealEngine {
       ...tributos.pendencias,
       ...pendenciasFrete(logistica, cotacaoFrete),
       ...pendenciasPiso(pisoMinimoAntt),
+      ...pendenciasMargem(margemPercentual),
     ];
     const calculoCompleto = pendenciasOperacionais.length === 0;
 
@@ -136,7 +145,15 @@ export class DealEngine {
     // A exceção é o impedimento de fato: frete abaixo do piso mínimo ANTT
     // não é "informação faltando", é uma operação que não pode ser
     // executada como está. Isso continua bloqueando a viabilidade.
-    const impedimentoReal = pisoMinimoAntt.aplicavel === true && pisoMinimoAntt.freteInformadoAbaixoDoPiso === true;
+    //
+    // O segundo impedimento vem das planilhas de referência: margem abaixo
+    // do mínimo operacional de 4% é operação que "não fecha a conta" — um
+    // lucro de 2% sobre milhões não sobrevive a um mês de custo financeiro
+    // ou a uma quebra de classificação. Lucro positivo com margem de 2%
+    // não é viável, é armadilha.
+    const impedimentoReal =
+      (pisoMinimoAntt.aplicavel === true && pisoMinimoAntt.freteInformadoAbaixoDoPiso === true) ||
+      margemPercentual < MARGEM_MINIMA_OPERACIONAL_PERCENTUAL;
     const viavel = resultado > 0 && !impedimentoReal;
 
     return {
@@ -209,6 +226,13 @@ function pendenciasPiso(piso: ResultadoPisoMinimo): string[] {
     return ["Piso mínimo ANTT não validado."];
   }
   return [];
+}
+
+function pendenciasMargem(margemPercentual: number): string[] {
+  if (margemPercentual >= MARGEM_MINIMA_OPERACIONAL_PERCENTUAL) return [];
+  return [
+    `Margem de ${round2(margemPercentual)}% abaixo do mínimo operacional de ${MARGEM_MINIMA_OPERACIONAL_PERCENTUAL}% exigido nas planilhas de referência.`,
+  ];
 }
 
 function linha(descricao: string, valorPorSaca: number, sacas: number): LinhaCusto {

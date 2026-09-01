@@ -44,7 +44,12 @@ export function ResultDashboard({ resultado }: { resultado: ResultadoOperacao })
         cor: "border-risco",
         textoCor: "text-risco",
         fundo: "bg-risco/10 text-risco",
-        aviso: "O resultado não cobre os custos informados.",
+        // Resultado positivo sem viabilidade = critério mínimo não atendido
+        // (margem de 4% das planilhas ou piso ANTT), não prejuízo.
+        aviso:
+          resultado.resultado.valor > 0
+            ? "O resultado é positivo, mas a operação não atende um critério mínimo. Veja as pendências."
+            : "O resultado não cobre os custos informados.",
       };
 
   return (

@@ -164,6 +164,48 @@ describe("DealEngine — piso mínimo ANTT", () => {
   });
 });
 
+describe("DealEngine — margem mínima operacional (4% das planilhas de referência)", () => {
+  // Regra de validação explícita das planilhas ("Precificação Agrícola" e
+  // "PRECIFICAÇÃO OFICIAL"): margem < 4% → operação não viável, mesmo com
+  // resultado positivo. SORGO não tem regra tributária cadastrada, então o
+  // custo tributário é zero e a margem fica fácil de mirar no teste.
+  function operacaoComMargem(precoCompra: number): OperacaoInput {
+    return {
+      mercadoria: { produto: "SORGO", quantidadeSacas: 1000, pesoPorSacaKg: 60 },
+      compra: { precoPorSaca: precoCompra, municipioOrigem: "Alto Taquari", estadoOrigem: "MT" },
+      venda: { precoPorSaca: 100, municipioDestino: "Rancharia", estadoDestino: "SP" },
+      logistica: { fretePorTonelada: 10 }, // 60 t × R$ 10 = R$ 600 de frete
+      tipoOperacao: "SOBRE_RODAS",
+    };
+  }
+
+  it("marca como não viável operação lucrativa com margem abaixo de 4%", async () => {
+    // Custo 97.600, receita 100.000 → lucro de 2.400, margem de 2,4%.
+    const resultado = await montarEngine().calcular(operacaoComMargem(97));
+
+    expect(resultado.resultado.valor).toBe(2_400);
+    expect(resultado.margemPercentual).toBe(2.4);
+    expect(resultado.viavel).toBe(false);
+    expect(resultado.pendenciasOperacionais.join(" ")).toMatch(/margem.*mínimo operacional de 4%/i);
+  });
+
+  it("marca como viável operação com margem exatamente no mínimo de 4%", async () => {
+    // Custo 96.000, receita 100.000 → margem de exatamente 4%: fecha a conta.
+    const resultado = await montarEngine().calcular(operacaoComMargem(95.4));
+
+    expect(resultado.margemPercentual).toBe(4);
+    expect(resultado.viavel).toBe(true);
+    expect(resultado.pendenciasOperacionais.join(" ")).not.toMatch(/mínimo operacional/i);
+  });
+
+  it("operação de referência (margem ~21%) segue viável", async () => {
+    const resultado = await montarEngine().calcular(OPERACAO_SOJA_REFERENCIA);
+
+    expect(resultado.margemPercentual).toBeGreaterThanOrEqual(4);
+    expect(resultado.viavel).toBe(true);
+  });
+});
+
 describe("TaxEngine — vigência por data da operação", () => {
   it("usa dataOperacao/dataBase para decidir regra vigente", () => {
     const regras: RegraTributaria[] = [
