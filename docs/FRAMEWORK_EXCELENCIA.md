@@ -117,6 +117,17 @@ mescla.** Enviar só uma variável apaga todas as outras — já apagou as
 chaves de IA em produção. Sempre enviar o conjunto completo, ou editar
 pelo dashboard.
 
+**Banco e serviço precisam estar na mesma região.** A rede privada da
+Render não cruza regiões: um Postgres em `oregon` com o backend em `ohio`
+falha com `getaddrinfo ENOTFOUND` no hostname interno, e o erro não diz
+nada sobre região. Confirmar a região do serviço antes de criar o banco.
+Só é permitido um banco gratuito por conta, então corrigir depois exige
+apagar o errado primeiro.
+
+**`BACKEND_PUBLIC_URL` sem barra no final.** Com barra, o redirect URI do
+OAuth vira `...onrender.com//api/...` e o Google recusa por não bater com o
+que está cadastrado — sem mensagem útil.
+
 ## REGRA 7 — DOCUMENTAÇÃO
 
 Toda sessão de trabalho que muda arquitetura, adiciona uma regra tributária
@@ -230,7 +241,33 @@ usuário vê "Calculando…" para sempre) e o processo gera unhandled
 rejection. Toda rota async encaminha erro para o handler central do
 `server.ts`.
 
-### SQLite local como ponte, não como decisão final de produção
+### Viabilidade e completude são perguntas diferentes
+
+`viavel` responde "o resultado é positivo?"; `calculoCompleto` responde "dá
+para confiar plenamente neste número?". Juntar as duas já quebrou o produto:
+como três tributos nunca foram cadastrados e o piso ANTT está com vigência
+expirada, `calculoCompleto` é permanentemente false — e com a regra antiga
+(`resultado > 0 && calculoCompleto`) nenhuma operação jamais era marcada
+como viável, nem a de referência com lucro real. O produto respondia
+"cálculo incompleto" para tudo.
+
+A única exceção que bloqueia viabilidade é impedimento de fato: frete
+abaixo do piso mínimo ANTT não é informação faltando, é operação que não
+pode ser executada como está.
+
+Corolário: pendência nunca pode virar boa notícia. Uma rota sem regra
+fiscal cadastrada exibe margem *maior* que uma rota mapeada, porque o
+tributo entra como zero. A interface precisa dizer que o número está
+inflado por falta de cadastro, não por isenção.
+
+### Sessão no banco, não só em token
+
+A sessão vive no Postgres para que desativar um usuário tire o acesso dele
+na hora. Com sessão apenas em token assinado, o admin clica em "desativar" e
+a pessoa continua usando o sistema até o token expirar — o controle vira
+teatro.
+
+### SQLite foi ponte, não destino (resolvido)
 A escolha de SQLite via Drizzle foi para rodar sem infraestrutura externa
 na fase inicial. O schema já é escrito para migrar a Postgres com mudança
 mínima (troca de driver, não de modelagem). Enquanto o backend rodar em
@@ -256,21 +293,27 @@ manualmente se necessário antes de considerar o deploy concluído.
 
 - Regras seed precisam de validação com especialista tributário/contábil.
   Pendência declarada desde a criação do motor, ainda não resolvida.
+- Piso mínimo ANTT com vigência **deliberadamente expirada** (12/03/2026,
+  véspera da Portaria SUROC nº 3/2026). Isso força pendência explícita em
+  vez de calcular com coeficiente velho. Confirmar os valores vigentes em
+  `calculadorafrete.antt.gov.br` e cadastrar nova versão da regra.
 - Dados da CEPEA são CC BY-NC 4.0 (não comercial). O uso atual foi
   autorizado como projeto de estudo. Virando produto comercial, essa fonte
   precisa ser renegociada com a CEPEA.
 
 **Abertas**
 
-- Coeficientes ANTT expiram em 20/01/2027 (reajuste semestral jan/jul +
-  gatilho de diesel de ±5%). Na expiração o sistema volta a retornar
-  pendência por design. Renovar cadastrando nova versão da regra em
-  `rules.seed.ts`, sem editar a anterior.
 - Regras tributárias cobrem só os dois cenários das planilhas de
   referência (soja MT→SP, milho MT→MT) — qualquer outra combinação de UF
   retorna pendência por design, não é bug.
-- Sem disco persistente na Render — histórico de operações calculadas não
-  sobrevive a redeploy do backend.
+- Postgres no plano gratuito **expira 30 dias após a criação**, levando os
+  dados junto. Como agora guarda contas de usuário e histórico, migrar para
+  plano pago antes do vencimento.
+- App Google em modo *testing*: só test users conseguem entrar. Publicar
+  para abrir a outras pessoas (escopos usados são não-sensíveis e não
+  exigem verificação).
+- Rotas de autenticação, dashboard e admin ainda sem teste automatizado — o
+  login foi validado manualmente em produção.
 - Credenciais Transerve (`TRANSERVE_CLIENT_ID` / `TRANSERVE_CLIENT_SECRET`)
   ainda não fornecidas; sem elas as rotas respondem 503 explícito.
 - Sorgo não tem regra tributária nem fonte de cotação (a B3 não tem
@@ -284,9 +327,5 @@ manualmente se necessário antes de considerar o deploy concluído.
 **Resolvidas**
 
 - Serviço antigo `Logpro01` mal configurado — suspenso por Michel.
-- Piso mínimo ANTT com vigência deliberadamente expirada — resolvido com o
-  cadastro dos coeficientes da Resolução ANTT nº 6.084, de 16/07/2026
-  (Tabela A, granel sólido) como regra versão 2, mantendo a v1 intacta.
-- Distância da rota dependia de digitação manual — resolvido com cálculo
-  automático via OpenStreetMap (Nominatim + OSRM, gratuitos), marcado como
-  `api_externa` no resultado.
+- Banco efêmero: migrado para Postgres persistente (região ohio).
+- Histórico de operações não sobrevivia a redeploy.

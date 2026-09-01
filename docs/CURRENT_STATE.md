@@ -1,38 +1,82 @@
 # Estado Atual
 
-O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend Node/Express/TypeScript, Postgres via Drizzle e frontend React/Vite/Tailwind. O fluxo principal calcula receita, custo da mercadoria, frete, tributos, custos adicionais, margem, resultado por saca e checagem de piso minimo ANTT quando ha dados suficientes.
+O LogPro01 e um motor de viabilidade de operacoes de graos em producao, com
+backend Node/Express/TypeScript, Postgres via Drizzle e frontend
+React/Vite/Tailwind. O fluxo principal calcula receita, custo da mercadoria,
+frete, tributos, custos adicionais, margem, resultado por saca e checagem de
+piso minimo ANTT quando ha dados suficientes.
+
+Acesso exige login com Google. Cada consulta fica vinculada ao usuario que a
+fez, e o administrador controla quem tem acesso.
 
 ## O que esta garantido
 
-- O `tax_engine` nao inventa tributos. Sem regra ativa e vigente para o cenario, ele retorna pendencia.
-- O `freight_engine` manual nao estima frete real. Frete ausente ou zerado bloqueia calculo valido na validacao da API.
-- O `deal_engine` marca uma operacao como viavel quando o resultado e positivo e nao ha impedimento real (frete abaixo do piso ANTT ou margem abaixo de 4%). A completude do calculo e informada separadamente.
-- Pendencias tributarias, logisticas e de piso ANTT aparecem em `pendenciasOperacionais`.
+- O `tax_engine` nao inventa tributos. Sem regra ativa e vigente para o
+  cenario, ele retorna pendencia.
+- O `freight_engine` manual nao estima frete real. Frete ausente ou zerado
+  bloqueia calculo valido na validacao da API.
+- `viavel` e `calculoCompleto` sao independentes. `viavel` responde a pergunta
+  financeira (resultado positivo); `calculoCompleto` diz se da para confiar
+  plenamente no numero. A unica excecao que bloqueia viabilidade e o
+  impedimento de fato: frete abaixo do piso minimo ANTT.
+- Quando ha tributo sem cadastro, a interface avisa explicitamente que o valor
+  entrou como zero por falta de cadastro (nao por isencao) e que a margem
+  exibida esta mais alta que a real.
+- Pendencias tributarias, logisticas e de piso ANTT aparecem em
+  `pendenciasOperacionais`.
 - A data da operacao controla a vigencia da regra tributaria quando informada.
 - O salvamento de `operation` e `operation_result` acontece em transacao.
-- O frontend permite salvar preferencias locais de campos fixos para novas consultas, como produto, peso por saca, frete, distancia, eixos, precos e comissoes. Esses valores continuam sendo dados informados pelo usuario.
-- Resultados calculados podem ser exportados em PDF via impressao do navegador, planilha `.xls` compativel com Excel e CSV separado por ponto e virgula.
-- `POST /api/operations/calcular` aceita o header `Idempotency-Key`. Mesma chave com o mesmo input devolve a operacao original sem duplicar registro; mesma chave com input diferente retorna 409. A chave e escopada por usuario e o hash normalizado do input fica persistido para auditoria.
-- O resultado completo do calculo (memoria, tributos, pendencias) fica persistido em `operation_results.resultado_json`, imutavel. E a fonte do replay de idempotencia e garante que o historico mostre o numero calculado com a regra da epoca.
-- O piso minimo ANTT usa os coeficientes da Resolucao ANTT no 6.084, de 16/07/2026 (Tabela A, granel solido), cadastrados como regra versao 2 com vigencia ate 20/01/2027. A versao anterior permanece intacta e expirada.
-- Quando a operacao informa eixos mas nao informa distancia, a distancia e calculada pela rota rodoviaria real entre os municipios (geocodificacao Nominatim + roteirizacao OSRM, dados OpenStreetMap/ODbL, servicos publicos gratuitos) e marcada como `api_externa` no resultado. Ha cache em memoria para respeitar o limite de uso dos servicos.
-- Eixo informado sem distancia (nem informada nem calculavel) nao gera piso ficticio: a operacao recebe pendencia explicita de distancia em vez de um piso calculado com quilometragem zero.
-- A viabilidade exige margem minima operacional de 4% (regra de validacao das planilhas de referencia). Lucro positivo com margem abaixo de 4% marca a operacao como nao viavel, com pendencia explicando o motivo.
+- O assistente de chat nunca produz numero financeiro por conta propria: ele
+  coleta dados e chama o mesmo motor que a rota REST usa.
+- Nenhum usuario acessa consulta de outro. O filtro por dono entra no `WHERE`,
+  entao pedir o id de outra pessoa devolve 404, nao os dados dela.
+- Desativar um usuario encerra as sessoes dele na hora, porque a sessao vive no
+  banco e nao apenas num token.
+
+## Autenticacao e acesso
+
+- Login com Google (OAuth 2.0), validando `id_token` (assinatura, emissor e
+  audiencia) e protegendo o fluxo com `state` contra CSRF.
+- A identidade e casada pelo `sub` do Google, nao pelo e-mail — o e-mail pode
+  mudar, o `sub` nao.
+- Login obrigatorio em todas as rotas da aplicacao. Alem de proteger dados,
+  isso impede que o endpoint de chat (que consome cota paga de IA) seja usado
+  por quem nao tem conta.
+- Rotas de admin respondem 404 (nao 403) para quem nao e admin, para nao
+  confirmar a existencia da area.
+- Um admin nao consegue remover o proprio acesso — sem isso da para ficar sem
+  nenhum administrador e perder o painel de vez.
+- O primeiro admin vem de fora, pela variavel `ADMIN_EMAIL` aplicada no seed.
+
+## Infraestrutura
+
+- Postgres na Render, regiao **ohio** — a mesma do backend. A rede privada da
+  Render nao cruza regioes: um banco em outra regiao falha com
+  `getaddrinfo ENOTFOUND` no hostname interno.
+- O seed roda a cada start e e idempotente: cria tabelas com
+  `CREATE TABLE IF NOT EXISTS` e evolui as existentes com
+  `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
+- Antes era SQLite local. Trocado porque o disco do plano gratuito e efemero —
+  o banco era recriado a cada redeploy, o que inviabiliza contas e historico.
 
 ## Limites conhecidos
 
-- As regras tributarias seed cobrem apenas os cenarios de referencia documentados nas planilhas originais.
-- O documento "BASE DE CALCULO – COMPRA E VENDA DE GRAOS" (extraido das mesmas planilhas) diverge em um ponto: indica FETHAB de milho a R$ 0,8769/saca (6% da UPF/MT), enquanto a planilha original registra R$ 0,91/saca. O seed mantem o valor da planilha; a divergencia esta registrada no cabecalho do `rules.seed.ts` ate confirmacao na fonte.
-- Sorgo e demais graos aparecem naquele documento como projecao ("requer confirmacao junto a FAMATO"), por isso seguem sem regra cadastrada — pendencia por design.
-- As regras seed ainda precisam de validacao por especialista tributario antes de uso comercial.
-- O provider de frete atual e manual. Ainda nao ha cotacao real via transportadora ou Sapiens/SPIA conectada ao motor.
-- A rota `/api/freight-reference/antt` calcula referencia de piso minimo quando ha dados e coeficiente vigente; sem isso, retorna pendencia. Aceita origem/destino (municipio/UF) no lugar da distancia, calculada via OpenStreetMap/OSRM.
-- Os coeficientes ANTT vigentes expiram em 20/01/2027 (reajuste semestral jan/jul e gatilho de diesel de +-5%). Na expiracao, o sistema volta a retornar pendencia ate que uma nova versao da regra seja cadastrada — nunca calcula com coeficiente vencido.
-- Postgres ja e a base atual, mas ainda falta consolidar migrations versionadas.
-- O historico persistido guarda o resultado completo em `resultado_json` apenas nos calculos feitos apos a introducao da coluna. Registros antigos tem so o resumo.
-- As preferencias de campos fixos ficam no `localStorage` do navegador. Elas ainda nao sao sincronizadas entre dispositivos nem compartilhadas por equipe.
-- O perfil tributario salvo na engrenagem e apenas uma anotacao operacional. Ele nao altera calculo fiscal; regras tributarias continuam dependendo de cadastro versionado no `tax_engine`.
-- A exportacao atual roda no frontend. Ainda nao existe endpoint backend para gerar arquivo assinado, armazenar anexos ou reenviar cotacao por e-mail/WhatsApp.
+- As regras tributarias seed cobrem apenas os cenarios de referencia
+  documentados nas planilhas originais.
+- As regras seed ainda precisam de validacao por especialista tributario antes
+  de uso comercial.
+- O piso minimo ANTT esta com vigencia deliberadamente expirada, para forcar
+  pendencia em vez de calcular com coeficiente velho.
+- O provider de frete atual e manual. A integracao Transerve existe, mas nao
+  cotiza preco (a API dela solicita e rastreia, nao devolve valor por
+  tonelada), entao nao implementa `FreightProvider`.
+- A Transerve depende de `TRANSERVE_CLIENT_ID` e `TRANSERVE_CLIENT_SECRET`
+  ainda nao fornecidos; sem eles as rotas respondem 503 explicito.
+- O historico persistido guarda apenas resumo da operacao e do resultado, nao a
+  memoria completa imutavel.
+- O app Google esta em modo *testing*: so e-mails na lista de test users
+  conseguem entrar, ate que o app seja publicado.
+- O Postgres esta no plano gratuito, que expira 30 dias apos a criacao.
 
 ## Comandos de validacao
 
@@ -59,7 +103,8 @@ npx vite build
 
 - Nao existe default silencioso para tributo ausente.
 - Nao existe frete zero aceito como frete real.
-- Frete informado abaixo do piso minimo ANTT impede viabilidade quando a checagem e aplicavel.
-- Margem abaixo de 4% impede viabilidade mesmo com resultado positivo.
-- Falta de validacao do piso minimo ANTT torna o calculo incompleto.
+- Frete informado abaixo do piso minimo ANTT impede viabilidade quando a
+  checagem e aplicavel.
+- Falta de validacao do piso minimo ANTT torna o calculo incompleto (mas nao
+  zera a resposta financeira).
 - Despesa adicional sem `valorTotal` ou `valorPorSaca` e rejeitada na entrada.

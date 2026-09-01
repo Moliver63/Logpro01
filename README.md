@@ -24,8 +24,10 @@ logpro/
       extratorLocal.ts               extração por regras, sem IA
       circuitBreaker.ts              evita insistir em provedor fora do ar
       geminiKeyPool.ts               rotação entre múltiplas chaves
+      authService.ts                 login com Google e sessões
     src/integrations/transerve/      integração de transporte (OAuth2)
-    src/db/                          schema, seed, client
+    src/db/                          schema, seed, client (Postgres)
+    src/middleware/auth.ts           sessão, exigirLogin, exigirAdmin
     src/routes/                      API REST
     tests/                           suíte de testes (vitest)
   frontend/   React + Vite + TypeScript + Tailwind
@@ -33,10 +35,13 @@ logpro/
     src/components/OperationForm/          formulário em 4 blocos
     src/components/ResultDashboard.tsx
     src/components/CalculationMemory.tsx   "ver memória de cálculo"
-    src/components/ExportActions.tsx       exportacao de consulta em PDF, Excel e CSV
     src/components/ScenarioSimulator.tsx
     src/components/PriceReferenceWidget.tsx
-    src/components/SettingsPanel.tsx       preferencias abertas pela lateral
+    src/components/SettingsPanel.tsx       engrenagem do header
+    src/components/LoginScreen.tsx         tela de login
+    src/components/HistoricoSidebar.tsx    histórico de consultas
+    src/components/AdminPanel.tsx          administração de usuários
+    src/components/UserMenu.tsx            avatar, admin, sair
 ```
 
 ## Como rodar localmente
@@ -47,7 +52,7 @@ logpro/
 cd backend
 cp .env.example .env   # preencher as chaves que for usar
 npm install
-npm run seed    # cria/atualiza tabelas no Postgres e carrega as regras tributárias de referência
+npm run seed    # cria as tabelas no Postgres e carrega as regras tributárias de referência
 npm run dev     # http://localhost:3333
 ```
 
@@ -75,13 +80,10 @@ desenvolvimento, defina `PERMITIR_CORS_LOCALHOST=true`.
 cd backend && npm test
 ```
 
-57 testes cobrindo o motor de cálculo contra os números das planilhas de
+34 testes cobrindo o motor de cálculo contra os números das planilhas de
 referência, a validação de entrada, o extrator local (incluindo a regressão
-de inversão origem/destino), a persistência (`calculoService`, incluindo
-idempotência e replay), o cálculo automático de distância rodoviária
-(OpenStreetMap/OSRM, com mocks — nenhum teste bate na rede), os coeficientes
-vigentes do piso mínimo ANTT e a integração Transerve. Rodar antes de
-qualquer commit.
+de inversão origem/destino), a persistência (`calculoService`) e a
+integração Transerve. Rodar antes de qualquer commit.
 
 Dois bugs já escaparam de typecheck e build e só apareceram em teste ou em
 runtime: um arredondamento no `tax_engine` que vazava
@@ -93,15 +95,8 @@ dois têm teste de regressão fixando o comportamento.
 
 **Cálculo**
 
-- `POST /api/operations/calcular` — calcula viabilidade de uma operação.
-  Aceita o header opcional `Idempotency-Key`: repetir a requisição com a
-  mesma chave e os mesmos dados (duplo clique, retry de rede) devolve a
-  operação original em vez de gravar uma duplicata, com o header
-  `Idempotent-Replayed: true` na resposta. Reusar a chave com dados
-  diferentes retorna `409`. A chave é escopada por usuário e o hash
-  normalizado do input fica persistido para auditoria.
+- `POST /api/operations/calcular` — calcula viabilidade de uma operação
 - `POST /api/operations/simular` — compara até 10 cenários e aponta o melhor
-  (completa a distância pela rota real quando só origem/destino são informados)
 - `GET /api/tax-rules` — lista as regras tributárias cadastradas
 
 **Referência de preço**
@@ -110,18 +105,24 @@ dois têm teste de regressão fixando o comportamento.
   TRIGO, SORGO). Tenta a CEPEA primeiro (preço físico brasileiro); se não
   cobrir o produto, cai para a Alpha Vantage (Chicago/CBOT). Produto sem
   cobertura retorna pendência explícita, nunca um valor inventado.
-- `POST /api/freight-reference/antt` — calcula uma referência de piso mínimo
-  ANTT quando houver quantidade, peso por saca, distância e eixos. Se a
-  distância não for informada mas houver município/UF de origem e destino,
-  ela é calculada pela rota rodoviária real (OpenStreetMap/OSRM, gratuito)
-  e marcada como `api_externa`. Se faltar dado ou coeficiente vigente,
-  retorna pendência explícita em vez de inventar frete.
 
 **Assistente**
 
 - `POST /api/chat` — conversa que coleta os dados da operação e chama o
   motor de cálculo. Limitado a 12 requisições por minuto por IP.
 - `GET /api/chat/status` — se o assistente está disponível e em que modo.
+
+**Autenticação, dashboard e administração**
+
+- `GET /api/auth/google` — inicia o login; `GET /api/auth/google/callback`
+  recebe o retorno do Google
+- `GET /api/auth/me` — quem está logado (única rota da aplicação que responde
+  sem sessão)
+- `POST /api/auth/logout`
+- `GET /api/dashboard/consultas` · `/consultas/:id` · `/resumo` — histórico do
+  próprio usuário
+- `GET /api/admin/usuarios` · `PATCH /api/admin/usuarios/:id` · `/resumo` — só
+  para administradores
 
 **Transporte (Transerve)**
 
@@ -150,6 +151,54 @@ se não consegue identificar um campo com confiança, declara o que falta em
 vez de adivinhar. Origem e destino são identificados pelo verbo ("compro
 em X", "vendo em Y"), não pela ordem no texto.
 
+## Acesso e contas
+
+O sistema exige login com Google. Sem sessão, a única coisa que responde é o
+próprio fluxo de autenticação — inclusive o endpoint do chat, que consome cota
+paga de IA e por isso não fica aberto.
+
+Cada consulta calculada fica vinculada a quem a fez e aparece na barra lateral
+daquela pessoa. O isolamento é feito no banco: o filtro por dono entra no
+`WHERE`, então pedir o identificador de uma consulta alheia devolve 404, não os
+dados dela.
+
+O administrador vê todos os usuários, quantas consultas cada um fez e o último
+acesso, e pode desativar alguém ou promover a admin. Desativar encerra as
+sessões abertas na hora, porque a sessão vive no banco e não apenas num token —
+não é preciso esperar nada expirar. Um admin não consegue remover o próprio
+acesso, senão seria possível ficar sem nenhum administrador.
+
+O primeiro admin vem de fora, pela variável `ADMIN_EMAIL` aplicada no start.
+
+Enquanto o app Google estiver em modo *testing*, apenas e-mails cadastrados
+como test users conseguem entrar — inclusive o dono do projeto.
+
+## Variáveis de ambiente
+
+Backend (ver `backend/.env.example`):
+
+| Variável | Para quê |
+|---|---|
+| `DATABASE_URL` | Postgres. Na Render, use a **Internal** Database URL |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Login com Google |
+| `BACKEND_PUBLIC_URL` | Monta o redirect URI do OAuth. **Sem barra no final** |
+| `ADMIN_EMAIL` | Promovido a administrador no start |
+| `FRONTEND_ORIGIN` | Origem permitida no CORS |
+| `PERMITIR_CORS_LOCALHOST` | `true` só em desenvolvimento |
+| `GEMINI_API_KEY`, `GEMINI_API_KEY2`, `GROQ_API_KEY` | Assistente |
+| `ALPHA_VANTAGE_API_KEY` | Referência de preço internacional |
+| `TRANSERVE_*` | Integração de transporte |
+
+Frontend: `VITE_API_URL` apontando para a URL pública do backend.
+
+Nunca defina `NODE_ENV=production` no serviço da Render — o npm passa a pular
+`devDependencies` e o build quebra. Por isso `typescript`, `tsx` e os `@types`
+moram em `dependencies`.
+
+O banco precisa estar na **mesma região** do backend (hoje `ohio`). A rede
+privada da Render não cruza regiões: um Postgres em outra região falha com
+`getaddrinfo ENOTFOUND` no hostname interno.
+
 ## Validado com dados reais
 
 Os cálculos do `tax_engine` e `deal_engine` foram conferidos contra a
@@ -164,22 +213,6 @@ frete zerado é rejeitada na validação da API, e o piso mínimo ANTT, quando
 aplicável, impede viabilidade se o frete informado ficar abaixo dele — um
 número de margem calculado sobre frete inexistente seria enganoso, não
 otimista.
-
-A viabilidade também exige a **margem mínima operacional de 4%**, regra de
-validação das próprias planilhas de referência: operação com lucro positivo
-mas margem abaixo de 4% é marcada como não viável, com pendência explicando
-o motivo. Lucro apertado demais não sobrevive a um mês de custo financeiro
-ou a uma quebra de classificação.
-
-## Exportacao de consultas
-
-Todo resultado calculado pode ser exportado pelo frontend em tres formatos:
-
-- PDF: abre um relatorio pronto para impressao. O usuario salva como PDF pelo navegador.
-- Excel: baixa uma planilha `.xls` compativel com Excel e LibreOffice.
-- CSV: baixa dados separados por ponto e virgula, bom para ERPs, TMS e planilhas.
-
-Os arquivos usam apenas os valores que ja vieram do motor de calculo e preservam pendencias operacionais. No fluxo por formulario, tambem incluem os dados estruturados da operacao. No fluxo por chat, quando a operacao estruturada nao esta disponivel no frontend, exportam o resultado, memoria, frete, tributos, custos e pendencias.
 
 ## Regras tributárias de referência
 
@@ -206,29 +239,6 @@ clientes, essa fonte precisa ser renegociada diretamente com a CEPEA antes
 de continuar em uso. A atribuição visível na interface é exigência da
 licença, não escolha estética.
 
-## Piso mínimo ANTT e distância da rota
-
-O piso mínimo (Lei 13.703/2018) usa os coeficientes da **Resolução ANTT
-nº 6.084, de 16/07/2026** (Tabela A, granel sólido), versionados em
-`backend/src/engines/freight_engine/piso_minimo/rules.seed.ts` — a versão
-anterior ficou intacta e expirada, como manda a regra de nunca sobrescrever
-regra vigente. Conforme a Resolução ANTT nº 6.076/2026, contam todos os
-eixos, inclusive suspensos.
-
-Quando a operação informa eixos mas não informa distância, o sistema tenta
-calculá-la pela **rota rodoviária real** entre os municípios de origem e
-destino, usando serviços públicos e gratuitos: geocodificação
-[Nominatim](https://nominatim.openstreetmap.org) e roteirização
-[OSRM](https://router.project-osrm.org), ambos sobre dados OpenStreetMap.
-A distância calculada entra no resultado marcada como `api_externa` (nunca
-se confunde com valor informado pelo usuário), com cache em memória para
-respeitar o limite de uso dos serviços. Se a consulta falhar, o piso não é
-verificado e a operação recebe pendência explícita — nunca uma distância
-estimada.
-
-Dados de geocodificação e rota: **© OpenStreetMap contributors**, licença
-ODbL.
-
 ## O que foi deixado de fora de propósito
 
 Marketplace público, match automático comprador↔vendedor, negociação na
@@ -247,18 +257,17 @@ escrever código contra endpoints possivelmente indisponíveis.
 
 1. Validar as regras tributárias seed com um contador/especialista antes de
    qualquer uso com cliente real.
-2. ~~Confirmar os coeficientes vigentes do piso mínimo ANTT~~ — **feito**:
-   cadastrados os coeficientes da Resolução ANTT nº 6.084, de 16/07/2026
-   (DOU de 17/07/2026), Tabela A, granel sólido, como regra versão 2. A ANTT
-   reajusta os valores semestralmente (janeiro/julho) e por gatilho de
-   diesel (±5%), então a regra v2 tem `vigenciaFim` e o sistema volta a
-   retornar pendência explícita quando ela expirar — nunca calcula com
-   coeficiente vencido. Renovar em janeiro/2027 (ou antes, se houver
-   reajuste por diesel) cadastrando uma **nova versão**, sem editar a v2.
+2. Confirmar os coeficientes vigentes do piso mínimo ANTT em
+   `calculadorafrete.antt.gov.br` e cadastrar uma nova versão da regra — a
+   atual está com vigência deliberadamente expirada, para forçar pendência
+   em vez de calcular com dado velho.
 3. Cadastrar mais combinações de origem/destino/produto — hoje só há
    cobertura para os dois cenários das planilhas fornecidas; qualquer outra
    UF retorna pendência (comportamento esperado, não é bug).
-4. Consolidar migrations versionadas do Postgres — hoje o schema é criado e
-   atualizado por SQL idempotente no seed, sem histórico versionado de
-   mudanças.
+4. Migrar o Postgres para um plano pago antes do vencimento do gratuito — hoje
+   ele guarda contas de usuário e histórico, então a expiração levaria dados
+   reais junto.
 5. Obter as credenciais Transerve para ativar a integração de transporte.
+6. Persistir a memória de cálculo completa junto do resultado, para que uma
+   consulta antiga reaberta reproduza exatamente o que o usuário viu na época
+   (ver `docs/ROADMAP.md`).
