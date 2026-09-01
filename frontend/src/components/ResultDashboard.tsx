@@ -156,6 +156,12 @@ function PisoMinimoCard({ piso }: { piso: ResultadoOperacao["pisoMinimoAntt"] })
           O frete informado está abaixo do piso legal.
         </p>
       )}
+      {piso.distanciaKm != null && (
+        <p className="mt-1 font-body text-[11px] text-tintaSuave">
+          Distância: {piso.distanciaKm.toLocaleString("pt-BR")} km
+          {piso.origemDistancia === "api_externa" ? " (rota OpenStreetMap/OSRM)" : ""}
+        </p>
+      )}
       <p className="mt-2 font-body text-[11px] text-tintaSuave">{piso.fonte}</p>
     </div>
   );

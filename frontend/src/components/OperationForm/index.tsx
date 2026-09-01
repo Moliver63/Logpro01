@@ -115,7 +115,7 @@ export function OperationForm({ form, set }: Props) {
       <Card className="p-5">
         <BlockHeader n="03" titulo="Frete" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Frete / tonelada (R$)" hint="informado manualmente nesta fase" required>
+          <Field label="Frete / tonelada (R$)" required>
             <NumberField
               value={form.fretePorTonelada}
               onValueChange={(v) => set("fretePorTonelada", v)}
@@ -132,7 +132,7 @@ export function OperationForm({ form, set }: Props) {
               step="0.01"
             />
           </Field>
-          <Field label="Distância (km)" hint="opcional, usado para checar o piso mínimo ANTT">
+          <Field label="Distância (km)" hint="opcional — se vazio, calculamos pela rota origem → destino">
             <NumberField value={form.distanciaKm} onValueChange={(v) => set("distanciaKm", v)} />
           </Field>
           <Field label="Número de eixos" hint="opcional, do veículo/composição contratada">
@@ -148,6 +148,8 @@ export function OperationForm({ form, set }: Props) {
             pesoPorSacaKg={form.pesoPorSacaKg}
             distanciaKm={form.distanciaKm}
             numeroEixos={form.numeroEixos}
+            origem={{ municipio: form.municipioOrigem, uf: form.estadoOrigem }}
+            destino={{ municipio: form.municipioDestino, uf: form.estadoDestino }}
             onUsarFrete={(valor) => set("fretePorTonelada", valor)}
           />
         </div>

@@ -69,6 +69,8 @@ export async function calcularReferenciaFreteAntt(input: {
   pesoPorSacaKg?: number;
   distanciaKm?: number;
   numeroEixos?: number;
+  origem?: { municipio: string; uf: string };
+  destino?: { municipio: string; uf: string };
 }) {
   return post<ResultadoReferenciaFreteAntt>("/freight-reference/antt", input);
 }

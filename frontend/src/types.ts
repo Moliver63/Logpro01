@@ -74,6 +74,8 @@ export interface ResultadoPisoMinimo {
   regraId?: string;
   fonte?: string;
   freteInformadoAbaixoDoPiso?: boolean;
+  distanciaKm?: number;
+  origemDistancia?: "informado_usuario" | "calculado_sistema" | "api_externa" | "estimado";
   pendencia?: string;
 }
 
@@ -137,6 +139,12 @@ export interface ResultadoReferenciaFreteAntt {
   camposNecessarios: string[];
   pendencias: string[];
   toneladas?: number;
+  distancia?: {
+    km: number;
+    origemDado: "api_externa";
+    provedor: string;
+    atribuicao: string;
+  };
   freteMinimoTotal?: number;
   freteMinimoPorTonelada?: number;
   pisoMinimoAntt?: ResultadoPisoMinimo;

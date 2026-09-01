@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { executarCalculo, ConflitoIdempotenciaError } from "../src/services/calculoService.js";
+import { limparCachesDistancia } from "../src/services/distanciaService.js";
 import { db } from "../src/db/client.js";
 import { operations, operationResults, idempotencyKeys } from "../src/db/schema.js";
 import type { OperacaoInput } from "../src/types/domain.js";
@@ -34,10 +35,33 @@ const OPERACAO: OperacaoInput = {
 execSync("npx tsx src/db/seed.ts", { stdio: "ignore" });
 
 beforeEach(async () => {
+  // O cache de distâncias sobreviveria entre testes e misturaria os cenários
+  // (um teste simula sucesso do OSRM, outro simula falha).
+  limparCachesDistancia();
   await db.delete(idempotencyKeys);
   await db.delete(operationResults);
   await db.delete(operations);
 });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function mockFetchDistanciaOk(distanciaMetros: number) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: unknown) => {
+      const u = String(url);
+      if (u.includes("nominatim")) {
+        return { ok: true, json: async () => [{ lat: "-17.5", lon: "-53.3" }] };
+      }
+      if (u.includes("router.project-osrm")) {
+        return { ok: true, json: async () => ({ code: "Ok", routes: [{ distance: distanciaMetros }] }) };
+      }
+      throw new Error(`URL inesperada no teste: ${u}`);
+    })
+  );
+}
 
 describe("executarCalculo — caminho real usado pela API e pelo chat", () => {
   it("calcula e persiste sem lançar", async () => {
@@ -131,5 +155,59 @@ describe("idempotência — duplo clique e retry de rede não duplicam operaçã
     expect(a.replay).toBeUndefined();
     const ops = await db.select().from(operations);
     expect(ops).toHaveLength(2);
+  });
+});
+
+describe("distância automática (OpenStreetMap/OSRM)", () => {
+  it("preenche a distância via OSRM quando eixos vêm sem distância, marcada api_externa", async () => {
+    mockFetchDistanciaOk(500_000);
+
+    const { resultado } = await executarCalculo({
+      ...OPERACAO,
+      logistica: { fretePorTonelada: 250, numeroEixos: 7 },
+    });
+
+    expect(resultado.pisoMinimoAntt.aplicavel).toBe(true);
+    expect(resultado.pisoMinimoAntt.distanciaKm).toBe(500);
+    expect(resultado.pisoMinimoAntt.origemDistancia).toBe("api_externa");
+  });
+
+  it("não chama a rede quando a distância já vem informada", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const { resultado } = await executarCalculo({
+      ...OPERACAO,
+      logistica: { fretePorTonelada: 250, numeroEixos: 7, distanciaKm: 500 },
+    });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(resultado.pisoMinimoAntt.origemDistancia).toBe("informado_usuario");
+  });
+
+  it("sem eixos, não consulta distância nem verifica piso", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const { resultado } = await executarCalculo(OPERACAO);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(resultado.pisoMinimoAntt.aplicavel).toBe(false);
+    expect(resultado.pisoMinimoAntt.pendencia).toMatch(/eixos/i);
+  });
+
+  it("se o serviço de rotas falhar, o piso vira pendência em vez de número estimado", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) }))
+    );
+
+    const { resultado } = await executarCalculo({
+      ...OPERACAO,
+      logistica: { fretePorTonelada: 250, numeroEixos: 7 },
+    });
+
+    expect(resultado.pisoMinimoAntt.aplicavel).toBe(false);
+    expect(resultado.pisoMinimoAntt.pendencia).toMatch(/distância/i);
   });
 });

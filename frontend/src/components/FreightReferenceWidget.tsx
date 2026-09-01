@@ -4,11 +4,18 @@ import type { ResultadoReferenciaFreteAntt } from "../types";
 
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+interface PontoRota {
+  municipio: string;
+  uf: string;
+}
+
 interface Props {
   quantidadeSacas: number | "";
   pesoPorSacaKg: number | "";
   distanciaKm: number | "";
   numeroEixos: number | "";
+  origem?: PontoRota;
+  destino?: PontoRota;
   onUsarFrete: (valor: number) => void;
 }
 
@@ -17,6 +24,8 @@ export function FreightReferenceWidget({
   pesoPorSacaKg,
   distanciaKm,
   numeroEixos,
+  origem,
+  destino,
   onUsarFrete,
 }: Props) {
   const [resultado, setResultado] = useState<ResultadoReferenciaFreteAntt | null>(null);
@@ -27,11 +36,15 @@ export function FreightReferenceWidget({
     setCarregando(true);
     setErro(null);
     try {
+      const distanciaInformada = distanciaKm !== "" && Number(distanciaKm) > 0;
       const resposta = await calcularReferenciaFreteAntt({
         quantidadeSacas: quantidadeSacas === "" ? undefined : Number(quantidadeSacas),
         pesoPorSacaKg: pesoPorSacaKg === "" ? undefined : Number(pesoPorSacaKg),
-        distanciaKm: distanciaKm === "" ? undefined : Number(distanciaKm),
+        distanciaKm: distanciaInformada ? Number(distanciaKm) : undefined,
         numeroEixos: numeroEixos === "" ? undefined : Number(numeroEixos),
+        // Sem distância digitada, o servidor calcula a rota real (OpenStreetMap/OSRM).
+        origem: !distanciaInformada && origem?.municipio && origem?.uf ? origem : undefined,
+        destino: !distanciaInformada && destino?.municipio && destino?.uf ? destino : undefined,
       });
       setResultado(resposta);
     } catch (e) {
@@ -49,7 +62,8 @@ export function FreightReferenceWidget({
             Referência ANTT
           </span>
           <span className="mt-1 block font-body text-xs text-tintaSuave">
-            Piso mínimo legal, não cotação de mercado.
+            Piso mínimo legal, não cotação de mercado. Sem distância digitada, ela é calculada pela
+            rota entre origem e destino.
           </span>
         </div>
         <button
@@ -96,9 +110,14 @@ export function FreightReferenceWidget({
             </ul>
           )}
           <p className="font-body text-[11px] leading-snug text-tintaSuave">{resultado.observacao}</p>
+          {resultado.distancia && (
+            <p className="font-body text-[11px] leading-snug text-tintaSuave">
+              Distância da rota: {resultado.distancia.km.toLocaleString("pt-BR")} km (
+              {resultado.distancia.provedor})
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
-
