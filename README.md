@@ -33,6 +33,7 @@ logpro/
     src/components/OperationForm/          formulário em 4 blocos
     src/components/ResultDashboard.tsx
     src/components/CalculationMemory.tsx   "ver memória de cálculo"
+    src/components/ExportActions.tsx       exportacao de consulta em PDF, Excel e CSV
     src/components/ScenarioSimulator.tsx
     src/components/PriceReferenceWidget.tsx
     src/components/SettingsPanel.tsx       preferencias abertas pela lateral
@@ -151,6 +152,16 @@ frete zerado é rejeitada na validação da API, e o piso mínimo ANTT, quando
 aplicável, impede viabilidade se o frete informado ficar abaixo dele — um
 número de margem calculado sobre frete inexistente seria enganoso, não
 otimista.
+
+## Exportacao de consultas
+
+Todo resultado calculado pode ser exportado pelo frontend em tres formatos:
+
+- PDF: abre um relatorio pronto para impressao. O usuario salva como PDF pelo navegador.
+- Excel: baixa uma planilha `.xls` compativel com Excel e LibreOffice.
+- CSV: baixa dados separados por ponto e virgula, bom para ERPs, TMS e planilhas.
+
+Os arquivos usam apenas os valores que ja vieram do motor de calculo e preservam pendencias operacionais. No fluxo por formulario, tambem incluem os dados estruturados da operacao. No fluxo por chat, quando a operacao estruturada nao esta disponivel no frontend, exportam o resultado, memoria, frete, tributos, custos e pendencias.
 
 ## Regras tributárias de referência
 

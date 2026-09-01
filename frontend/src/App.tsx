@@ -5,11 +5,12 @@ import { ResultDashboard } from "./components/ResultDashboard";
 import { CalculationMemory } from "./components/CalculationMemory";
 import { ScenarioSimulator } from "./components/ScenarioSimulator";
 import { ChatAssistant } from "./components/ChatAssistant";
+import { ExportActions } from "./components/ExportActions";
 import { LoginScreen } from "./components/LoginScreen";
 import { HistoricoSidebar } from "./components/HistoricoSidebar";
 import { AdminPanel } from "./components/AdminPanel";
 import { calcularOperacao, simularCenarios, getSessao, type Usuario } from "./api/client";
-import type { ResultadoOperacao, ResultadoCenario, Cenario } from "./types";
+import type { ResultadoOperacao, ResultadoCenario, Cenario, OperacaoInput } from "./types";
 
 type ModoEntrada = "formulario" | "chat";
 type Secao = "calculo" | "admin";
@@ -33,6 +34,7 @@ export default function App() {
   }, []);
 
   const [resultado, setResultado] = useState<ResultadoOperacao | null>(null);
+  const [operacaoResultado, setOperacaoResultado] = useState<OperacaoInput | null>(null);
   const [calculando, setCalculando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -45,8 +47,10 @@ export default function App() {
     setCalculando(true);
     setCenariosResultado(null);
     try {
-      const { resultado: r } = await calcularOperacao(paraOperacaoInput());
+      const input = paraOperacaoInput();
+      const { resultado: r } = await calcularOperacao(input);
       setResultado(r);
+      setOperacaoResultado(input);
       // A consulta acabou de ser salva: atualiza o histórico da barra lateral.
       setVersaoHistorico((v) => v + 1);
     } catch (e) {
@@ -190,6 +194,7 @@ export default function App() {
                     </div>
 
                     <ResultDashboard resultado={resultado} />
+                    <ExportActions resultado={resultado} operacao={operacaoResultado ?? undefined} />
                     <CalculationMemory resultado={resultado} />
 
                     <div className="border-b border-borda/80 pb-4">

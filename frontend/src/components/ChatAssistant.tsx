@@ -3,6 +3,7 @@ import { enviarMensagemChat, type MensagemChat } from "../api/client";
 import type { ResultadoOperacao } from "../types";
 import { ResultDashboard } from "./ResultDashboard";
 import { CalculationMemory } from "./CalculationMemory";
+import { ExportActions } from "./ExportActions";
 
 interface Turno {
   role: "user" | "assistant";
@@ -82,6 +83,9 @@ export function ChatAssistant({ onConsultaRegistrada }: { onConsultaRegistrada?:
               {turno.resultadoOperacao && (
                 <div className="mt-4 -mx-1">
                   <ResultDashboard resultado={turno.resultadoOperacao} />
+                  <div className="mt-3">
+                    <ExportActions resultado={turno.resultadoOperacao} />
+                  </div>
                   <div className="mt-3">
                     <CalculationMemory resultado={turno.resultadoOperacao} />
                   </div>
