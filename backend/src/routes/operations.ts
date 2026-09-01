@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { montarDealEngine, executarCalculo } from "../services/calculoService.js";
+import { montarDealEngine, executarCalculo, ConflitoIdempotenciaError } from "../services/calculoService.js";
 import { operacaoInputSchema, simularCenariosSchema } from "./validation.js";
 
 export const operationsRouter = Router();
@@ -8,6 +8,8 @@ export const operationsRouter = Router();
 // Express 4 deixa a requisição pendurada sem resposta e gera unhandled
 // rejection no processo.
 
+const TAMANHO_MAX_CHAVE_IDEMPOTENCIA = 200;
+
 operationsRouter.post("/calcular", async (req, res, next) => {
   try {
     const parsed = operacaoInputSchema.safeParse(req.body);
@@ -15,10 +17,30 @@ operationsRouter.post("/calcular", async (req, res, next) => {
       return res.status(400).json({ erro: "Entrada inválida", detalhes: parsed.error.flatten() });
     }
 
+    // Idempotência: quem chama pode mandar um header `Idempotency-Key`
+    // (um UUID qualquer gerado por tentativa de cálculo). Repetir a
+    // requisição com a mesma chave e os mesmos dados — duplo clique, retry
+    // de rede — devolve a operação original em vez de gravar duplicata.
+    // Mesma chave com dados diferentes é erro do cliente (409).
+    const idempotencyKey = req.get("Idempotency-Key")?.trim() || null;
+    if (idempotencyKey && idempotencyKey.length > TAMANHO_MAX_CHAVE_IDEMPOTENCIA) {
+      return res.status(400).json({
+        erro: `Idempotency-Key muito longa (máximo ${TAMANHO_MAX_CHAVE_IDEMPOTENCIA} caracteres)`,
+      });
+    }
+
     // Vincula a consulta a quem está logado, para aparecer no dashboard dele.
-    const { operationId, resultado } = await executarCalculo(parsed.data, req.usuario?.id);
+    const { operationId, resultado, replay } = await executarCalculo(
+      parsed.data,
+      req.usuario?.id,
+      idempotencyKey
+    );
+    if (replay) res.setHeader("Idempotent-Replayed", "true");
     return res.json({ operationId, resultado });
   } catch (erro) {
+    if (erro instanceof ConflitoIdempotenciaError) {
+      return res.status(erro.statusCode).json({ erro: erro.message });
+    }
     return next(erro);
   }
 });

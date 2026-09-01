@@ -167,7 +167,30 @@ export const operationResults = pgTable("operation_results", {
   margemPercentual: doublePrecision("margem_percentual").notNull(),
   precoMinimoVendaPorSaca: doublePrecision("preco_minimo_venda_por_saca").notNull(),
   viavel: boolean("viavel").notNull(),
+  /**
+   * Resultado completo serializado (memória de cálculo, tributos aplicados,
+   * pendências). Imutável depois de criado: se a regra fiscal mudar, o
+   * histórico continua mostrando o número calculado com a regra da época.
+   * Também é a fonte do replay de idempotência. Nulo apenas em registros
+   * anteriores à introdução da coluna.
+   */
+  resultadoJson: text("resultado_json"),
   calculadoEm: text("calculado_em").notNull(),
+});
+
+/**
+ * Chaves de idempotência do POST /api/operations/calcular.
+ *
+ * A `chave` já é gravada escopada por usuário ("<userId>:<chave>", ou
+ * "anon:<chave>" sem sessão), então dois usuários podem usar a mesma
+ * chave sem colidir. `inputHash` guarda o hash normalizado do input para
+ * auditoria e para detectar reuso da chave com dados diferentes (409).
+ */
+export const idempotencyKeys = pgTable("idempotency_keys", {
+  chave: text("chave").primaryKey(),
+  inputHash: text("input_hash").notNull(),
+  operationId: text("operation_id").notNull(),
+  criadoEm: text("criado_em").notNull(),
 });
 
 export const scenarioSimulations = pgTable("scenario_simulations", {

@@ -12,6 +12,8 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 - O salvamento de `operation` e `operation_result` acontece em transacao.
 - O frontend permite salvar preferencias locais de campos fixos para novas consultas, como produto, peso por saca, frete, distancia, eixos, precos e comissoes. Esses valores continuam sendo dados informados pelo usuario.
 - Resultados calculados podem ser exportados em PDF via impressao do navegador, planilha `.xls` compativel com Excel e CSV separado por ponto e virgula.
+- `POST /api/operations/calcular` aceita o header `Idempotency-Key`. Mesma chave com o mesmo input devolve a operacao original sem duplicar registro; mesma chave com input diferente retorna 409. A chave e escopada por usuario e o hash normalizado do input fica persistido para auditoria.
+- O resultado completo do calculo (memoria, tributos, pendencias) fica persistido em `operation_results.resultado_json`, imutavel. E a fonte do replay de idempotencia e garante que o historico mostre o numero calculado com a regra da epoca.
 
 ## Limites conhecidos
 
@@ -20,7 +22,7 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 - O provider de frete atual e manual. Ainda nao ha cotacao real via transportadora ou Sapiens/SPIA conectada ao motor.
 - A rota `/api/freight-reference/antt` calcula referencia de piso minimo quando ha dados e coeficiente vigente; sem isso, retorna pendencia.
 - Postgres ja e a base atual, mas ainda falta consolidar migrations versionadas.
-- O historico persistido ainda guarda apenas resumo da operacao e do resultado, nao a memoria completa imutavel.
+- O historico persistido guarda o resultado completo em `resultado_json` apenas nos calculos feitos apos a introducao da coluna. Registros antigos tem so o resumo.
 - As preferencias de campos fixos ficam no `localStorage` do navegador. Elas ainda nao sao sincronizadas entre dispositivos nem compartilhadas por equipe.
 - O perfil tributario salvo na engrenagem e apenas uma anotacao operacional. Ele nao altera calculo fiscal; regras tributarias continuam dependendo de cadastro versionado no `tax_engine`.
 - A exportacao atual roda no frontend. Ainda nao existe endpoint backend para gerar arquivo assinado, armazenar anexos ou reenviar cotacao por e-mail/WhatsApp.

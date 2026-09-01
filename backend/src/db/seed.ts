@@ -98,14 +98,23 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS papel TEXT NOT NULL DEFAULT 'USUARIO'
 ALTER TABLE users ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS ultimo_acesso_em TEXT;
 ALTER TABLE operations ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE operation_results ADD COLUMN IF NOT EXISTS resultado_json TEXT;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
   criado_em TEXT NOT NULL, expira_em TEXT NOT NULL
 );
 
+-- Chaves de idempotência do POST /api/operations/calcular: repetir a mesma
+-- requisição com a mesma chave devolve a operação original, sem duplicata.
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  chave TEXT PRIMARY KEY, input_hash TEXT NOT NULL,
+  operation_id TEXT NOT NULL, criado_em TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_operations_user_id ON operations(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_operation_id ON idempotency_keys(operation_id);
 `));
 
   const existentes = await db.select().from(taxRules);

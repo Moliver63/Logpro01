@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { executarCalculo } from "../src/services/calculoService.js";
+import { executarCalculo, ConflitoIdempotenciaError } from "../src/services/calculoService.js";
 import { db } from "../src/db/client.js";
-import { operations, operationResults } from "../src/db/schema.js";
+import { operations, operationResults, idempotencyKeys } from "../src/db/schema.js";
 import type { OperacaoInput } from "../src/types/domain.js";
 import { execSync } from "node:child_process";
 
@@ -34,6 +34,7 @@ const OPERACAO: OperacaoInput = {
 execSync("npx tsx src/db/seed.ts", { stdio: "ignore" });
 
 beforeEach(async () => {
+  await db.delete(idempotencyKeys);
   await db.delete(operationResults);
   await db.delete(operations);
 });
@@ -54,5 +55,81 @@ describe("executarCalculo — caminho real usado pela API e pelo chat", () => {
 
     expect(ops.some((o) => o.id === operationId)).toBe(true);
     expect(results.some((r) => r.operationId === operationId)).toBe(true);
+  });
+
+  it("persiste o resultado completo em resultado_json (memória imutável)", async () => {
+    const { operationId, resultado } = await executarCalculo(OPERACAO);
+
+    const [salvo] = await db.select().from(operationResults);
+    expect(salvo.operationId).toBe(operationId);
+    expect(salvo.resultadoJson).toBeTruthy();
+    expect(JSON.parse(salvo.resultadoJson!)).toEqual(resultado);
+  });
+});
+
+describe("idempotência — duplo clique e retry de rede não duplicam operação", () => {
+  it("mesma chave + mesmo input devolve a operação original, sem duplicar", async () => {
+    const primeira = await executarCalculo(OPERACAO, null, "chave-1");
+    const segunda = await executarCalculo(OPERACAO, null, "chave-1");
+
+    expect(segunda.operationId).toBe(primeira.operationId);
+    expect(segunda.replay).toBe(true);
+    // O replay devolve exatamente o resultado persistido, número por número.
+    expect(segunda.resultado).toEqual(primeira.resultado);
+
+    const ops = await db.select().from(operations);
+    expect(ops).toHaveLength(1);
+  });
+
+  it("mesma chave + input diferente falha com 409, sem gravar nada", async () => {
+    await executarCalculo(OPERACAO, null, "chave-1");
+
+    const outraOperacao: OperacaoInput = {
+      ...OPERACAO,
+      venda: { ...OPERACAO.venda, precoPorSaca: 71 },
+    };
+    await expect(executarCalculo(outraOperacao, null, "chave-1")).rejects.toBeInstanceOf(
+      ConflitoIdempotenciaError
+    );
+
+    const ops = await db.select().from(operations);
+    expect(ops).toHaveLength(1);
+  });
+
+  it("a mesma chave em usuários diferentes não colide", async () => {
+    const a = await executarCalculo(OPERACAO, "usuario-a", "chave-1");
+    const b = await executarCalculo(OPERACAO, "usuario-b", "chave-1");
+
+    expect(a.operationId).not.toBe(b.operationId);
+    const ops = await db.select().from(operations);
+    expect(ops).toHaveLength(2);
+  });
+
+  it("ordem diferente das chaves do JSON produz o mesmo hash", async () => {
+    const primeira = await executarCalculo(OPERACAO, null, "chave-1");
+
+    // Remonta o input com as propriedades em outra ordem — é a mesma
+    // operação, então tem que bater no replay, não virar duplicata.
+    const reordenado = JSON.parse(
+      `{"logistica":${JSON.stringify(OPERACAO.logistica)},"venda":${JSON.stringify(
+        OPERACAO.venda
+      )},"compra":${JSON.stringify(OPERACAO.compra)},"mercadoria":${JSON.stringify(
+        OPERACAO.mercadoria
+      )},"tipoOperacao":"SOBRE_RODAS"}`
+    ) as OperacaoInput;
+    const segunda = await executarCalculo(reordenado, null, "chave-1");
+
+    expect(segunda.operationId).toBe(primeira.operationId);
+    expect(segunda.replay).toBe(true);
+  });
+
+  it("sem chave, cada chamada grava uma operação nova (comportamento anterior preservado)", async () => {
+    const a = await executarCalculo(OPERACAO);
+    const b = await executarCalculo(OPERACAO);
+
+    expect(a.operationId).not.toBe(b.operationId);
+    expect(a.replay).toBeUndefined();
+    const ops = await db.select().from(operations);
+    expect(ops).toHaveLength(2);
   });
 });

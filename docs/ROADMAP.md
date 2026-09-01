@@ -10,15 +10,19 @@ Prioridade dos proximos passos tecnicos do LogPro01.
 
 ## 2. Memoria de calculo imutavel
 
-- Persistir linhas de custo, tributos aplicados, regra fiscal usada, frete e piso ANTT junto do resultado.
-- Exibir a memoria completa mesmo que regras futuras mudem.
-- Guardar versao e fonte de cada regra usada.
+- ~~Persistir linhas de custo, tributos aplicados, regra fiscal usada, frete e piso ANTT junto do resultado.~~ Feito: o resultado completo fica em `operation_results.resultado_json`, imutavel.
+- Exibir a memoria completa a partir do historico persistido, mesmo que regras futuras mudem.
+- Guardar versao e fonte de cada regra usada (parcial: a versao da regra ja vai na memoria serializada; falta consulta dedicada).
 
 ## 3. Idempotencia
 
-- Adicionar chave idempotente em `POST /api/operations/calcular`.
-- Evitar duplicar operacoes quando o usuario clicar duas vezes ou quando houver retry de rede.
-- Persistir hash normalizado do input para auditoria.
+Concluido.
+
+- `POST /api/operations/calcular` aceita o header `Idempotency-Key`, escopado por usuario.
+- Mesma chave + mesmo input devolve a operacao original (replay a partir do `resultado_json` persistido), sem duplicar operacao em duplo clique ou retry de rede.
+- Mesma chave + input diferente retorna 409.
+- Hash normalizado do input persistido em `idempotency_keys.input_hash` para auditoria.
+- Corrida de duas requisicoes simultaneas com a mesma chave e resolvida pela PK da tabela: a perdedora rele a vencedora e devolve o mesmo resultado.
 
 ## 4. Postgres
 
