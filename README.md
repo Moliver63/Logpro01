@@ -75,7 +75,7 @@ desenvolvimento, defina `PERMITIR_CORS_LOCALHOST=true`.
 cd backend && npm test
 ```
 
-54 testes cobrindo o motor de cálculo contra os números das planilhas de
+57 testes cobrindo o motor de cálculo contra os números das planilhas de
 referência, a validação de entrada, o extrator local (incluindo a regressão
 de inversão origem/destino), a persistência (`calculoService`, incluindo
 idempotência e replay), o cálculo automático de distância rodoviária
@@ -164,6 +164,12 @@ frete zerado é rejeitada na validação da API, e o piso mínimo ANTT, quando
 aplicável, impede viabilidade se o frete informado ficar abaixo dele — um
 número de margem calculado sobre frete inexistente seria enganoso, não
 otimista.
+
+A viabilidade também exige a **margem mínima operacional de 4%**, regra de
+validação das próprias planilhas de referência: operação com lucro positivo
+mas margem abaixo de 4% é marcada como não viável, com pendência explicando
+o motivo. Lucro apertado demais não sobrevive a um mês de custo financeiro
+ou a uma quebra de classificação.
 
 ## Exportacao de consultas
 

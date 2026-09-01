@@ -6,7 +6,7 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 
 - O `tax_engine` nao inventa tributos. Sem regra ativa e vigente para o cenario, ele retorna pendencia.
 - O `freight_engine` manual nao estima frete real. Frete ausente ou zerado bloqueia calculo valido na validacao da API.
-- O `deal_engine` so marca uma operacao como viavel quando o resultado e positivo e o calculo esta completo.
+- O `deal_engine` marca uma operacao como viavel quando o resultado e positivo e nao ha impedimento real (frete abaixo do piso ANTT ou margem abaixo de 4%). A completude do calculo e informada separadamente.
 - Pendencias tributarias, logisticas e de piso ANTT aparecem em `pendenciasOperacionais`.
 - A data da operacao controla a vigencia da regra tributaria quando informada.
 - O salvamento de `operation` e `operation_result` acontece em transacao.
@@ -17,10 +17,13 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 - O piso minimo ANTT usa os coeficientes da Resolucao ANTT no 6.084, de 16/07/2026 (Tabela A, granel solido), cadastrados como regra versao 2 com vigencia ate 20/01/2027. A versao anterior permanece intacta e expirada.
 - Quando a operacao informa eixos mas nao informa distancia, a distancia e calculada pela rota rodoviaria real entre os municipios (geocodificacao Nominatim + roteirizacao OSRM, dados OpenStreetMap/ODbL, servicos publicos gratuitos) e marcada como `api_externa` no resultado. Ha cache em memoria para respeitar o limite de uso dos servicos.
 - Eixo informado sem distancia (nem informada nem calculavel) nao gera piso ficticio: a operacao recebe pendencia explicita de distancia em vez de um piso calculado com quilometragem zero.
+- A viabilidade exige margem minima operacional de 4% (regra de validacao das planilhas de referencia). Lucro positivo com margem abaixo de 4% marca a operacao como nao viavel, com pendencia explicando o motivo.
 
 ## Limites conhecidos
 
 - As regras tributarias seed cobrem apenas os cenarios de referencia documentados nas planilhas originais.
+- O documento "BASE DE CALCULO – COMPRA E VENDA DE GRAOS" (extraido das mesmas planilhas) diverge em um ponto: indica FETHAB de milho a R$ 0,8769/saca (6% da UPF/MT), enquanto a planilha original registra R$ 0,91/saca. O seed mantem o valor da planilha; a divergencia esta registrada no cabecalho do `rules.seed.ts` ate confirmacao na fonte.
+- Sorgo e demais graos aparecem naquele documento como projecao ("requer confirmacao junto a FAMATO"), por isso seguem sem regra cadastrada — pendencia por design.
 - As regras seed ainda precisam de validacao por especialista tributario antes de uso comercial.
 - O provider de frete atual e manual. Ainda nao ha cotacao real via transportadora ou Sapiens/SPIA conectada ao motor.
 - A rota `/api/freight-reference/antt` calcula referencia de piso minimo quando ha dados e coeficiente vigente; sem isso, retorna pendencia. Aceita origem/destino (municipio/UF) no lugar da distancia, calculada via OpenStreetMap/OSRM.
@@ -57,5 +60,6 @@ npx vite build
 - Nao existe default silencioso para tributo ausente.
 - Nao existe frete zero aceito como frete real.
 - Frete informado abaixo do piso minimo ANTT impede viabilidade quando a checagem e aplicavel.
+- Margem abaixo de 4% impede viabilidade mesmo com resultado positivo.
 - Falta de validacao do piso minimo ANTT torna o calculo incompleto.
 - Despesa adicional sem `valorTotal` ou `valorPorSaca` e rejeitada na entrada.

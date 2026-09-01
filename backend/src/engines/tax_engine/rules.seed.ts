@@ -14,6 +14,22 @@ import type { RegraTributaria } from "../../types/domain.js";
  * exatamente para deixar isso rastreável. Antes de cobrar qualquer cliente
  * com base nesses números, validar com um especialista tributário/contábil
  * — este é o pendency explícito do item 16.10 do prompt de especificação.
+ *
+ * CONFERÊNCIA CRUZADA (set/2026) — documento "BASE DE CÁLCULO – COMPRA E
+ * VENDA DE GRÃOS", extraído das mesmas planilhas:
+ * - Soja MT→SP bate integralmente: ICMS R$ 1,40/sac, PIS 1,65% e COFINS
+ *   7,6% sobre o valor da operação, FETHAB R$ 3,0911/sac (10% base + 10%
+ *   adicional + 1,15% entidade sobre a UPF/MT de R$ 243,49), SENAR
+ *   R$ 0,14/sac.
+ * - Milho MT→MT bate em SENAR (R$ 0,098/sac), FUNDED (4% sobre base de
+ *   R$ 5,712/sac) e FUNDES (1% sobre a mesma base).
+ * - DIVERGÊNCIA PENDENTE: o documento indica FETHAB de milho a 6% da UPF
+ *   (R$ 0,8769/sac), mas a planilha original de onde a regra foi extraída
+ *   registra R$ 0,91/sac. A regra abaixo mantém o valor da planilha;
+ *   confirmar na fonte antes de criar uma nova versão.
+ * - Sorgo e demais grãos aparecem no documento como PROJEÇÃO, com aviso de
+ *   "requer confirmação junto à FAMATO" — por isso seguem sem regra
+ *   cadastrada aqui (o motor retorna pendência para eles, por design).
  */
 
 const VIGENCIA_REFERENCIA = "2024-01-01";
