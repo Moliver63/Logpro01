@@ -256,16 +256,16 @@ manualmente se necessário antes de considerar o deploy concluído.
 
 - Regras seed precisam de validação com especialista tributário/contábil.
   Pendência declarada desde a criação do motor, ainda não resolvida.
-- Piso mínimo ANTT com vigência **deliberadamente expirada** (12/03/2026,
-  véspera da Portaria SUROC nº 3/2026). Isso força pendência explícita em
-  vez de calcular com coeficiente velho. Confirmar os valores vigentes em
-  `calculadorafrete.antt.gov.br` e cadastrar nova versão da regra.
 - Dados da CEPEA são CC BY-NC 4.0 (não comercial). O uso atual foi
   autorizado como projeto de estudo. Virando produto comercial, essa fonte
   precisa ser renegociada com a CEPEA.
 
 **Abertas**
 
+- Coeficientes ANTT expiram em 20/01/2027 (reajuste semestral jan/jul +
+  gatilho de diesel de ±5%). Na expiração o sistema volta a retornar
+  pendência por design. Renovar cadastrando nova versão da regra em
+  `rules.seed.ts`, sem editar a anterior.
 - Regras tributárias cobrem só os dois cenários das planilhas de
   referência (soja MT→SP, milho MT→MT) — qualquer outra combinação de UF
   retorna pendência por design, não é bug.
@@ -284,3 +284,9 @@ manualmente se necessário antes de considerar o deploy concluído.
 **Resolvidas**
 
 - Serviço antigo `Logpro01` mal configurado — suspenso por Michel.
+- Piso mínimo ANTT com vigência deliberadamente expirada — resolvido com o
+  cadastro dos coeficientes da Resolução ANTT nº 6.084, de 16/07/2026
+  (Tabela A, granel sólido) como regra versão 2, mantendo a v1 intacta.
+- Distância da rota dependia de digitação manual — resolvido com cálculo
+  automático via OpenStreetMap (Nominatim + OSRM, gratuitos), marcado como
+  `api_externa` no resultado.
