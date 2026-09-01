@@ -17,7 +17,7 @@ type ModoEntrada = "formulario" | "chat";
 type Secao = "calculo" | "admin";
 
 export default function App() {
-  const { form, set, pronto, paraOperacaoInput } = useOperationForm();
+  const { form, set, pronto, paraOperacaoInput, aplicarPadroesSalvos } = useOperationForm();
   const [modo, setModo] = useState<ModoEntrada>("chat");
   const [secao, setSecao] = useState<Secao>("calculo");
 
@@ -108,7 +108,11 @@ export default function App() {
             <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-white/55 lg:block">
               Motor de viabilidade
             </span>
-            <SettingsPanel onAbrirFormulario={() => setModo("formulario")} />
+            <SettingsPanel
+              form={form}
+              onAbrirFormulario={() => setModo("formulario")}
+              onAplicarPadroes={aplicarPadroesSalvos}
+            />
             <UserMenu
               usuario={usuario}
               emAdmin={secao === "admin"}

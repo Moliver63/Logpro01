@@ -10,6 +10,7 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 - Pendencias tributarias, logisticas e de piso ANTT aparecem em `pendenciasOperacionais`.
 - A data da operacao controla a vigencia da regra tributaria quando informada.
 - O salvamento de `operation` e `operation_result` acontece em transacao.
+- O frontend permite salvar preferencias locais de campos fixos para novas consultas, como produto, peso por saca, frete, distancia, eixos, precos e comissoes. Esses valores continuam sendo dados informados pelo usuario.
 
 ## Limites conhecidos
 
@@ -19,6 +20,8 @@ O LogPro01 e um MVP funcional de viabilidade de operacoes de graos com backend N
 - A rota `/api/freight-reference/antt` calcula referencia de piso minimo quando ha dados e coeficiente vigente; sem isso, retorna pendencia.
 - Postgres ja e a base atual, mas ainda falta consolidar migrations versionadas.
 - O historico persistido ainda guarda apenas resumo da operacao e do resultado, nao a memoria completa imutavel.
+- As preferencias de campos fixos ficam no `localStorage` do navegador. Elas ainda nao sao sincronizadas entre dispositivos nem compartilhadas por equipe.
+- O perfil tributario salvo na engrenagem e apenas uma anotacao operacional. Ele nao altera calculo fiscal; regras tributarias continuam dependendo de cadastro versionado no `tax_engine`.
 
 ## Comandos de validacao
 

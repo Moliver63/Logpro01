@@ -33,3 +33,13 @@ Prioridade dos proximos passos tecnicos do LogPro01.
 - Comparar frete informado com cotacao real e piso minimo ANTT.
 - Avaliar Sapiens Fretes/SPIA ou outro fornecedor com API contratada para
   preencher `freteReferenciaMercado` sem depender de digitacao manual.
+
+## 6. Operacoes mais complexas
+
+- Criar cadastro de perfis de comprador, vendedor, transportadora e armazem, com dados fiscais e comerciais reutilizaveis.
+- Modelar contratos com prazo de pagamento, prazo de entrega, quebra tecnica, umidade, desconto de qualidade, seguro, armazenagem e custo financeiro.
+- Permitir rotas com multiplos trechos, transbordo, frete combinado e mais de uma transportadora.
+- Persistir preferencias de usuario no backend, nao apenas no navegador, com escopo por usuario e por empresa.
+- Criar biblioteca versionada de perfis tributarios validados por especialista, sem substituir a regra fiscal do `tax_engine` por anotacoes manuais.
+- Adicionar aprovacao operacional para calculos incompletos, com trilha de auditoria de quem aceitou pendencias.
+- Implementar anexos de memoria: cotacao de frete, comprovante de preco, regra fiscal validada, contrato, NF-e/CT-e quando houver integracao.

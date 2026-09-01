@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { OperacaoInput, Produto } from "../../types";
+import { aplicarPreferencias, carregarPreferencias } from "../../preferences";
 
 export interface FormState {
   produto: Produto;
@@ -56,10 +57,20 @@ export const estadoInicial: FormState = {
 };
 
 export function useOperationForm() {
-  const [form, setForm] = useState<FormState>(estadoInicial);
+  const [form, setForm] = useState<FormState>(() => {
+    const preferencias = carregarPreferencias();
+    return preferencias.aplicarAutomaticamente
+      ? aplicarPreferencias(estadoInicial, preferencias)
+      : estadoInicial;
+  });
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const aplicarPadroesSalvos = () => {
+    const preferencias = carregarPreferencias();
+    setForm((f) => aplicarPreferencias(f, preferencias));
+  };
 
   const pronto =
     form.quantidadeSacas !== "" &&
@@ -110,5 +121,5 @@ export function useOperationForm() {
     tipoOperacao: "SOBRE_RODAS",
   });
 
-  return { form, set, pronto, paraOperacaoInput, reset: () => setForm(estadoInicial) };
+  return { form, set, pronto, paraOperacaoInput, reset: () => setForm(estadoInicial), aplicarPadroesSalvos };
 }
