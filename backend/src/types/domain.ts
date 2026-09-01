@@ -50,6 +50,13 @@ export interface DadosLogistica {
   pedagios?: number;
   outrosCustosLogisticos?: number;
   numeroEixos?: number; // usado para checar o piso mínimo ANTT (Lei 13.703/2018)
+  /**
+   * Proveniência da distância. Preenchida apenas pelo sistema (o schema de
+   * validação da API descarta esse campo na entrada do usuário): quando a
+   * distância não é digitada, ela é calculada via OpenStreetMap/OSRM e
+   * marcada como "api_externa" até a interface.
+   */
+  origemDistancia?: OrigemDado;
 }
 
 export interface DespesaAdicional {
@@ -179,6 +186,9 @@ export interface ResultadoPisoMinimo {
   regraId?: string;
   fonte?: string;
   freteInformadoAbaixoDoPiso?: boolean;
+  /** Distância usada no cálculo e de onde ela veio (usuário ou OSRM). */
+  distanciaKm?: number;
+  origemDistancia?: OrigemDado;
   pendencia?: string;
 }
 

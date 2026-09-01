@@ -93,14 +93,26 @@ export class DealEngine {
     const precoMinimoVendaPorSaca = sacas !== 0 ? custoTotalSemReceita / sacas : 0;
 
     // ---- Piso mínimo ANTT (Lei 13.703/2018) — só roda se número de eixos foi informado ----
-    const pisoMinimoAntt: ResultadoPisoMinimo = logistica.numeroEixos
-      ? this.pisoMinimoEngine.calcular({
-          tipoCarga: "GRANEL_SOLIDO", // grãos a granel — soja/milho/trigo caem todos aqui
-          numeroEixos: logistica.numeroEixos,
-          distanciaKm: logistica.distanciaKm ?? 0,
-          freteInformadoTotal: cotacaoFrete.freteTotal,
-        })
-      : { aplicavel: false, pendencia: "Número de eixos não informado — piso mínimo ANTT não verificado." };
+    // Distância é obrigatória para o piso valer: calculado sem ela, o piso
+    // sairia só com o custo fixo de carga/descarga — um número
+    // enganosamente baixo, que aprovaria fretes abaixo do piso real. Sem
+    // distância (nem digitada, nem calculada via OSRM no calculoService),
+    // o piso vira pendência explícita em vez de parecer validado.
+    const pisoMinimoAntt: ResultadoPisoMinimo = !logistica.numeroEixos
+      ? { aplicavel: false, pendencia: "Número de eixos não informado — piso mínimo ANTT não verificado." }
+      : !logistica.distanciaKm || logistica.distanciaKm <= 0
+        ? {
+            aplicavel: false,
+            pendencia:
+              "Distância da rota não informada nem calculada — piso mínimo ANTT não verificado.",
+          }
+        : this.pisoMinimoEngine.calcular({
+            tipoCarga: "GRANEL_SOLIDO", // grãos a granel — soja/milho/trigo caem todos aqui
+            numeroEixos: logistica.numeroEixos,
+            distanciaKm: logistica.distanciaKm,
+            freteInformadoTotal: cotacaoFrete.freteTotal,
+            origemDistancia: logistica.origemDistancia ?? "informado_usuario",
+          });
 
     const pendenciasOperacionais = [
       ...tributos.pendencias,

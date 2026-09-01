@@ -6,6 +6,7 @@ import { DealEngine } from "../engines/deal_engine/index.js";
 import { PisoMinimoEngine } from "../engines/freight_engine/piso_minimo/index.js";
 import { seedPisoMinimoRules } from "../engines/freight_engine/piso_minimo/rules.seed.js";
 import { carregarRegrasAtivas } from "../db/taxRulesRepo.js";
+import { calcularDistanciaRodoviaria } from "./distanciaService.js";
 import { db } from "../db/client.js";
 import { operations, operationResults, idempotencyKeys } from "../db/schema.js";
 import type { OperacaoInput, ResultadoOperacao } from "../types/domain.js";
@@ -19,6 +20,36 @@ import type { OperacaoInput, ResultadoOperacao } from "../types/domain.js";
 export async function montarDealEngine(): Promise<DealEngine> {
   const regras = await carregarRegrasAtivas();
   return new DealEngine(new TaxEngine(regras), new FreightEngine(), new PisoMinimoEngine(seedPisoMinimoRules));
+}
+
+/**
+ * Distância é insumo do piso mínimo ANTT: sem ela o piso não pode ser
+ * verificado. Quando o usuário informou os eixos (piso aplicável) mas não
+ * a distância, calculamos a distância rodoviária real entre origem e
+ * destino via OpenStreetMap/OSRM (fonte gratuita), marcada como
+ * `api_externa` até a interface. Se a consulta falhar, o cálculo segue sem
+ * distância e o piso vira pendência explícita — nunca um número estimado
+ * em silêncio.
+ */
+export async function prepararLogisticaComDistancia(input: OperacaoInput): Promise<OperacaoInput> {
+  const { logistica } = input;
+  if (!logistica.numeroEixos) return input;
+  if (logistica.distanciaKm != null && logistica.distanciaKm > 0) return input;
+
+  const distancia = await calcularDistanciaRodoviaria(
+    { municipio: input.compra.municipioOrigem, uf: input.compra.estadoOrigem },
+    { municipio: input.venda.municipioDestino, uf: input.venda.estadoDestino }
+  );
+  if (!distancia.ok) return input;
+
+  return {
+    ...input,
+    logistica: {
+      ...logistica,
+      distanciaKm: distancia.distanciaKm,
+      origemDistancia: "api_externa",
+    },
+  };
 }
 
 /** Mesma chave de idempotência reutilizada com dados diferentes. A rota traduz para 409. */
@@ -87,8 +118,9 @@ export async function executarCalculo(
   /** Dono da consulta, quando há sessão. Sem isso a operação fica órfã e não aparece no dashboard de ninguém. */
   userId?: string | null,
   /**
-   * Chave de idempotência (header `Idempotency-Key`). Com ela, repetir a
-   * mesma requisição (duplo clique, retry de rede) devolve a operação
+   * Chave de idempotência opcional (header `Idempotency-Key`). Repetir a
+   * requisição com a mesma chave e os mesmos dados — duplo clique, retry de
+   * rede, F5 na hora errada — devolve a operação
    * original em vez de gravar uma duplicata. A chave é escopada por usuário:
    * duas pessoas podem usar "abc123" sem colidir.
    */
@@ -103,7 +135,7 @@ export async function executarCalculo(
   }
 
   const dealEngine = await montarDealEngine();
-  const resultado = await dealEngine.calcular(input);
+  const resultado = await dealEngine.calcular(await prepararLogisticaComDistancia(input));
 
   const operationId = randomUUID();
   const agora = new Date().toISOString();

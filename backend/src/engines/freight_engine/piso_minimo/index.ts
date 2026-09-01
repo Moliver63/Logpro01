@@ -1,4 +1,5 @@
 import type {
+  OrigemDado,
   RegraPisoMinimo,
   ResultadoPisoMinimo,
   TipoCargaAntt,
@@ -11,6 +12,8 @@ export interface PisoMinimoQuery {
   distanciaKm: number;
   freteInformadoTotal?: number;
   tabela?: TabelaAntt; // default "A" — composição veicular completa contratada
+  /** De onde veio a distância — chega até a interface junto com o resultado. */
+  origemDistancia?: OrigemDado;
 }
 
 function round2(n: number): number {
@@ -33,6 +36,7 @@ export class PisoMinimoEngine {
   calcular(query: PisoMinimoQuery): ResultadoPisoMinimo {
     const tabela = query.tabela ?? "A";
     const hoje = new Date();
+    const origemDistancia = query.origemDistancia ?? "informado_usuario";
 
     const regra = this.regras.find(
       (r) =>
@@ -47,6 +51,8 @@ export class PisoMinimoEngine {
     if (!regra) {
       return {
         aplicavel: false,
+        distanciaKm: query.distanciaKm,
+        origemDistancia,
         pendencia: `Coeficiente de piso mínimo ANTT não cadastrado ou vencido para Tabela ${tabela}, ${query.tipoCarga}, ${query.numeroEixos} eixos. Confirmar valor vigente em calculadorafrete.antt.gov.br antes de usar como referência.`,
       };
     }
@@ -58,6 +64,8 @@ export class PisoMinimoEngine {
       valorPiso,
       regraId: regra.id,
       fonte: regra.fonte,
+      distanciaKm: query.distanciaKm,
+      origemDistancia,
       freteInformadoAbaixoDoPiso:
         query.freteInformadoTotal != null ? query.freteInformadoTotal < valorPiso : undefined,
     };

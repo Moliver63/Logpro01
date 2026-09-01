@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { DealEngine } from "../src/engines/deal_engine/index.js";
 import { TaxEngine } from "../src/engines/tax_engine/index.js";
 import { FreightEngine } from "../src/engines/freight_engine/index.js";
@@ -104,11 +104,63 @@ describe("DealEngine — comportamento com produto sem regra cadastrada", () => 
 });
 
 describe("DealEngine — piso mínimo ANTT", () => {
+  // Data fixa: os coeficientes v2 (Resolução ANTT 6.084/2026) vigem até
+  // 20/01/2027. Se estes testes quebrarem depois dessa data, é o lembrete
+  // funcionando: cadastrar a versão nova da regra no rules.seed.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-01T12:00:00-03:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("não verifica piso quando número de eixos não foi informado", async () => {
     const resultado = await montarEngine().calcular(OPERACAO_SOJA_REFERENCIA);
     expect(resultado.pisoMinimoAntt.aplicavel).toBe(false);
     expect(resultado.pisoMinimoAntt.pendencia).toMatch(/eixos/i);
     expect(resultado.pendenciasOperacionais.join(" ")).toMatch(/ANTT/i);
+  });
+
+  it("não calcula piso com distância zero — vira pendência explícita", async () => {
+    // Antes desta correção, eixos sem distância faziam o piso sair só com
+    // o custo fixo de carga/descarga (R$ 820 em vez de ~R$ 4.846 para 500
+    // km), um número enganosamente baixo que aprovaria frete abaixo do
+    // piso real.
+    const resultado = await montarEngine().calcular({
+      ...OPERACAO_SOJA_REFERENCIA,
+      logistica: { fretePorTonelada: 100, numeroEixos: 7 },
+    });
+
+    expect(resultado.pisoMinimoAntt.aplicavel).toBe(false);
+    expect(resultado.pisoMinimoAntt.pendencia).toMatch(/distância/i);
+    expect(resultado.pendenciasOperacionais.join(" ")).toMatch(/ANTT/i);
+  });
+
+  it("aplica os coeficientes vigentes (Resolução ANTT 6.084/2026) com eixos e distância", async () => {
+    const resultado = await montarEngine().calcular({
+      ...OPERACAO_SOJA_REFERENCIA,
+      logistica: { fretePorTonelada: 100, numeroEixos: 7, distanciaKm: 500 },
+    });
+
+    expect(resultado.pisoMinimoAntt.aplicavel).toBe(true);
+    expect(resultado.pisoMinimoAntt.regraId).toBe("ANTT-TABELA-A-GRANEL_SOLIDO-7EIXOS-v2");
+    // 500 km × 8,0516 + 820,34 = 4.846,14
+    expect(resultado.pisoMinimoAntt.valorPiso).toBe(4846.14);
+    expect(resultado.pisoMinimoAntt.origemDistancia).toBe("informado_usuario");
+    // Frete de R$ 300.000 está muito acima do piso: não bloqueia.
+    expect(resultado.viavel).toBe(true);
+  });
+
+  it("bloqueia viabilidade quando o frete informado fica abaixo do piso vigente", async () => {
+    const resultado = await montarEngine().calcular({
+      ...OPERACAO_SOJA_REFERENCIA,
+      // 3.000 t × R$ 1 = R$ 3.000 de frete, abaixo do piso de R$ 4.846,14.
+      logistica: { fretePorTonelada: 1, numeroEixos: 7, distanciaKm: 500 },
+    });
+
+    expect(resultado.pisoMinimoAntt.freteInformadoAbaixoDoPiso).toBe(true);
+    expect(resultado.viavel).toBe(false);
   });
 });
 

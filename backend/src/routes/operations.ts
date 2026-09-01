@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { montarDealEngine, executarCalculo, ConflitoIdempotenciaError } from "../services/calculoService.js";
+import { montarDealEngine, executarCalculo, prepararLogisticaComDistancia, ConflitoIdempotenciaError } from "../services/calculoService.js";
 import { operacaoInputSchema, simularCenariosSchema } from "./validation.js";
 
 export const operationsRouter = Router();
@@ -53,7 +53,8 @@ operationsRouter.post("/simular", async (req, res, next) => {
     }
 
     const dealEngine = await montarDealEngine();
-    const resultados = await dealEngine.simularCenarios(parsed.data.operacao, parsed.data.cenarios);
+    const operacao = await prepararLogisticaComDistancia(parsed.data.operacao);
+    const resultados = await dealEngine.simularCenarios(operacao, parsed.data.cenarios);
 
     const melhor = resultados.reduce((a, b) => (b.margemPercentual > a.margemPercentual ? b : a));
 
