@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormState } from "./OperationForm/useOperationForm";
 import {
   CAMPOS_FIXOS,
@@ -54,18 +54,27 @@ export function SettingsPanel({
 }) {
   const [aberto, setAberto] = useState(false);
   const [preferencias, setPreferencias] = useState<PreferenciasOperacao>(() => carregarPreferencias());
+  const ref = useRef<HTMLDivElement>(null);
 
   const totalFixos = useMemo(() => contarCamposFixos(preferencias), [preferencias]);
 
   useEffect(() => {
     if (!aberto) return;
 
+    function handleClickFora(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    }
+
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setAberto(false);
     }
 
+    document.addEventListener("mousedown", handleClickFora);
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickFora);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [aberto]);
 
   function alternarCampo(campo: CampoFixo) {
@@ -97,12 +106,12 @@ export function SettingsPanel({
   }
 
   return (
-    <>
+    <div ref={ref} className="fixed bottom-4 left-4 z-40">
       <button
         onClick={() => setAberto((v) => !v)}
         aria-label="Configurações"
         title="Configurações"
-        className="relative flex h-9 w-9 items-center justify-center rounded-card text-white/65 transition-colors hover:bg-white/10 hover:text-white"
+        className="relative flex h-11 w-11 items-center justify-center rounded-card border border-borda bg-white text-tintaSuave shadow-lg shadow-navy/10 transition-colors hover:border-azul/30 hover:text-tinta"
       >
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
           <path
@@ -128,15 +137,8 @@ export function SettingsPanel({
       </button>
 
       {aberto && (
-        <div className="fixed inset-0 z-40">
-          <button
-            className="absolute inset-0 bg-navy/45"
-            aria-label="Fechar configurações"
-            onClick={() => setAberto(false)}
-          />
-
-          <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-borda bg-white shadow-2xl shadow-navy/20">
-            <header className="border-b border-borda px-5 py-4">
+          <aside className="absolute bottom-14 left-0 flex max-h-[calc(100vh-96px)] w-[min(calc(100vw-32px),390px)] flex-col overflow-hidden rounded-card border border-borda bg-white shadow-2xl shadow-navy/20">
+            <header className="border-b border-borda bg-white px-4 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <span className="font-mono text-[11px] uppercase tracking-widest text-tintaSuave">
@@ -163,11 +165,11 @@ export function SettingsPanel({
                 </button>
               </div>
               <p className="mt-3 font-body text-sm leading-6 text-tintaSuave">
-                Salve valores usados com frequência e aplique no formulário quando abrir uma nova operação.
+                Salve padrões para preencher novas operações com menos repetição.
               </p>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               <label className="flex items-center justify-between gap-4 rounded-card border border-borda bg-papel px-4 py-3">
                 <span>
                   <span className="block font-body text-sm font-semibold text-tinta">
@@ -190,7 +192,7 @@ export function SettingsPanel({
                 />
               </label>
 
-              <div className="mt-5 space-y-5">
+              <div className="mt-4 space-y-4">
                 {GRUPOS.map((grupo) => (
                   <section key={grupo}>
                     <h3 className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-tintaSuave">
@@ -224,7 +226,7 @@ export function SettingsPanel({
                 ))}
               </div>
 
-              <section className="mt-5 rounded-card border border-aviso/30 bg-aviso/5 p-4">
+              <section className="mt-4 rounded-card border border-aviso/30 bg-aviso/5 p-4">
                 <label className="block">
                   <span className="font-body text-xs font-semibold uppercase tracking-wide text-aviso">
                     Perfil tributário
@@ -245,7 +247,7 @@ export function SettingsPanel({
               </section>
             </div>
 
-            <footer className="border-t border-borda bg-papel/70 px-5 py-4">
+            <footer className="border-t border-borda bg-papel/70 px-4 py-4">
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={salvar}
@@ -279,8 +281,7 @@ export function SettingsPanel({
               </div>
             </footer>
           </aside>
-        </div>
       )}
-    </>
+    </div>
   );
 }

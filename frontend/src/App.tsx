@@ -108,11 +108,6 @@ export default function App() {
             <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-white/55 lg:block">
               Motor de viabilidade
             </span>
-            <SettingsPanel
-              form={form}
-              onAbrirFormulario={() => setModo("formulario")}
-              onAplicarPadroes={aplicarPadroesSalvos}
-            />
             <UserMenu
               usuario={usuario}
               emAdmin={secao === "admin"}
@@ -122,6 +117,15 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      <SettingsPanel
+        form={form}
+        onAbrirFormulario={() => {
+          setSecao("calculo");
+          setModo("formulario");
+        }}
+        onAplicarPadroes={aplicarPadroesSalvos}
+      />
 
       {secao === "admin" ? (
         <main className="mx-auto max-w-7xl px-5 py-8 sm:px-6">
