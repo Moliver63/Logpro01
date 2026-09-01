@@ -8,6 +8,11 @@ html {
 
 body {
   @apply bg-papel text-tinta font-body antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+}
+
+#root {
+  min-height: 100vh;
 }
 
 ::selection {
@@ -18,6 +23,22 @@ body {
 :focus-visible {
   outline: 2px solid #004cf7;
   outline-offset: 2px;
+}
+
+* {
+  scrollbar-color: #b7c9dd transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b7c9dd;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
 }
 
 @media (prefers-reduced-motion: reduce) {

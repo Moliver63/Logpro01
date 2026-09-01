@@ -32,6 +32,7 @@ export default {
         sucesso: "#16A34A",
         sucessoDark: "#15803D",
         risco: "#DC2626",
+        aviso: "#D97706",
       },
       fontFamily: {
         display: ["'Manrope'", "sans-serif"],
@@ -40,9 +41,10 @@ export default {
       },
       backgroundImage: {
         "brand-gradient": "linear-gradient(135deg, #02D5FD 0%, #004CF7 100%)",
+        "surface-gradient": "linear-gradient(180deg, #F8FBFF 0%, #EEF5FC 100%)",
       },
       borderRadius: {
-        card: "10px",
+        card: "8px",
       },
     },
   },

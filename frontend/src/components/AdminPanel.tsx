@@ -56,9 +56,12 @@ export function AdminPanel({ meuId }: { meuId: string }) {
 
   return (
     <div>
-      <div className="mb-8">
-        <span className="font-mono text-xs text-tintaSuave">Administração</span>
-        <h1 className="mt-1 font-display text-3xl font-medium text-tinta">Usuários</h1>
+      <div className="mb-8 border-b border-borda/80 pb-6">
+        <span className="font-mono text-xs uppercase tracking-wide text-tintaSuave">Administração</span>
+        <h1 className="mt-2 font-display text-3xl font-semibold text-tinta">Usuários</h1>
+        <p className="mt-2 max-w-2xl font-body text-sm leading-relaxed text-tintaSuave">
+          Controle quem acessa o LogPro e acompanhe o volume de consultas feitas pela equipe.
+        </p>
       </div>
 
       {resumo && (
@@ -69,11 +72,11 @@ export function AdminPanel({ meuId }: { meuId: string }) {
             { rotulo: "Desativados", valor: resumo.inativos },
             { rotulo: "Consultas", valor: resumo.totalConsultas },
           ].map((m) => (
-            <div key={m.rotulo} className="rounded-card border border-borda bg-white p-4">
+            <div key={m.rotulo} className="rounded-card border border-borda bg-white p-4 shadow-sm shadow-navy/[0.03]">
               <span className="font-body text-[11px] uppercase tracking-wide text-tintaSuave">
                 {m.rotulo}
               </span>
-              <p className="mt-1 font-mono text-2xl text-tinta">{m.valor}</p>
+              <p className="mt-1 font-mono text-2xl font-semibold text-tinta">{m.valor}</p>
             </div>
           ))}
         </div>
@@ -83,9 +86,9 @@ export function AdminPanel({ meuId }: { meuId: string }) {
       {carregando && <p className="font-body text-sm text-tintaSuave">Carregando…</p>}
 
       {!carregando && (
-        <div className="overflow-x-auto rounded-card border border-borda bg-white">
+        <div className="overflow-x-auto rounded-card border border-borda bg-white shadow-sm shadow-navy/[0.03]">
           <table className="w-full text-left">
-            <thead className="border-b border-borda">
+            <thead className="border-b border-borda bg-papel/70">
               <tr className="font-body text-[11px] uppercase tracking-wide text-tintaSuave">
                 <th className="px-4 py-3 font-medium">Usuário</th>
                 <th className="px-4 py-3 font-medium">Consultas</th>
@@ -98,7 +101,7 @@ export function AdminPanel({ meuId }: { meuId: string }) {
               {usuarios.map((u) => {
                 const souEu = u.id === meuId;
                 return (
-                  <tr key={u.id} className="border-b border-borda/60 last:border-0">
+                  <tr key={u.id} className="border-b border-borda/60 transition-colors last:border-0 hover:bg-papel/70">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         {u.avatarUrl ? (
@@ -126,7 +129,7 @@ export function AdminPanel({ meuId }: { meuId: string }) {
                         value={u.papel}
                         disabled={souEu || salvando === u.id}
                         onChange={(e) => alterar(u.id, { papel: e.target.value })}
-                        className="rounded-card border border-borda bg-white px-2 py-1 font-body text-xs text-tinta disabled:opacity-50"
+                        className="rounded-card border border-borda bg-white px-2.5 py-1.5 font-body text-xs text-tinta shadow-sm shadow-navy/[0.03] disabled:opacity-50"
                       >
                         <option value="USUARIO">Usuário</option>
                         <option value="ADMIN">Admin</option>
@@ -136,7 +139,7 @@ export function AdminPanel({ meuId }: { meuId: string }) {
                       <button
                         disabled={souEu || salvando === u.id}
                         onClick={() => alterar(u.id, { ativo: !u.ativo })}
-                        className={`rounded-card px-3 py-1 font-body text-xs font-medium transition-colors disabled:opacity-50 ${
+                        className={`rounded-full px-3 py-1.5 font-body text-xs font-semibold transition-colors disabled:opacity-50 ${
                           u.ativo
                             ? "bg-sucesso/10 text-sucessoDark hover:bg-sucesso/20"
                             : "bg-risco/10 text-risco hover:bg-risco/20"

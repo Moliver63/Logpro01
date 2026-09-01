@@ -13,7 +13,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="block font-body text-[13px] font-medium tracking-wide text-tintaSuave uppercase">
+      <span className="block font-body text-[12px] font-semibold uppercase tracking-wide text-tintaSuave">
         {label}
         {required && <span className="ml-1 text-risco">*</span>}
       </span>
@@ -24,8 +24,8 @@ export function Field({
 }
 
 const inputBase =
-  "w-full rounded-card border border-borda bg-white px-3 py-2 font-mono text-[15px] text-tinta " +
-  "placeholder:text-tintaSuave/50 focus:border-azul focus:outline-none transition-colors";
+  "w-full rounded-card border border-borda bg-white px-3 py-2.5 font-mono text-[15px] text-tinta shadow-sm shadow-navy/[0.02] " +
+  "placeholder:text-tintaSuave/50 focus:border-azul focus:bg-white focus:outline-none transition-colors";
 
 export function NumberField(
   props: React.InputHTMLAttributes<HTMLInputElement> & { value: number | ""; onValueChange: (v: number | "") => void }
@@ -64,6 +64,6 @@ export function SelectField(
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-card border border-borda bg-white shadow-sm shadow-navy/[0.03] ${className ?? ""}`}>{children}</div>
+    <div className={`rounded-card border border-borda/80 bg-white shadow-sm shadow-navy/[0.04] ${className ?? ""}`}>{children}</div>
   );
 }

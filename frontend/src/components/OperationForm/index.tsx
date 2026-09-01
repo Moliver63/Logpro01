@@ -17,7 +17,7 @@ function BlockHeader({ n, titulo }: { n: string; titulo: string }) {
   return (
     <div className="mb-4 flex items-baseline gap-3 border-b border-borda pb-2">
       <span className="font-mono text-xs font-semibold text-azul">{n}</span>
-      <h3 className="font-display text-lg font-medium text-tinta">{titulo}</h3>
+      <h3 className="font-display text-lg font-semibold text-tinta">{titulo}</h3>
     </div>
   );
 }
@@ -28,7 +28,7 @@ export function OperationForm({ form, set }: Props) {
       {/* Bloco 1 — Mercadoria + Compra */}
       <Card className="p-5">
         <BlockHeader n="01" titulo="Compra" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Produto" required>
             <SelectField value={form.produto} onChange={(e) => set("produto", e.target.value as FormState["produto"])}>
               <option value="SOJA">Soja</option>
@@ -81,7 +81,7 @@ export function OperationForm({ form, set }: Props) {
       {/* Bloco 2 — Venda */}
       <Card className="p-5">
         <BlockHeader n="02" titulo="Venda" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Preço de venda / saca (R$)" required>
             <NumberField
               value={form.precoVendaPorSaca}
@@ -114,7 +114,7 @@ export function OperationForm({ form, set }: Props) {
       {/* Bloco 3 — Logística */}
       <Card className="p-5">
         <BlockHeader n="03" titulo="Frete" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Frete / tonelada (R$)" hint="informado manualmente nesta fase" required>
             <NumberField
               value={form.fretePorTonelada}
@@ -156,7 +156,7 @@ export function OperationForm({ form, set }: Props) {
       {/* Bloco 4 — Custos adicionais / comissões (tributação é calculada pelo tax_engine, não informada aqui) */}
       <Card className="p-5">
         <BlockHeader n="04" titulo="Comissões e custos adicionais" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Comissão de venda / saca (R$)" hint="opcional">
             <NumberField
               value={form.comissaoVendaPorSaca}
