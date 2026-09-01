@@ -75,10 +75,11 @@ desenvolvimento, defina `PERMITIR_CORS_LOCALHOST=true`.
 cd backend && npm test
 ```
 
-34 testes cobrindo o motor de cálculo contra os números das planilhas de
+43 testes cobrindo o motor de cálculo contra os números das planilhas de
 referência, a validação de entrada, o extrator local (incluindo a regressão
-de inversão origem/destino), a persistência (`calculoService`) e a
-integração Transerve. Rodar antes de qualquer commit.
+de inversão origem/destino), a persistência (`calculoService`, incluindo
+idempotência e replay), e a integração Transerve. Rodar antes de qualquer
+commit.
 
 Dois bugs já escaparam de typecheck e build e só apareceram em teste ou em
 runtime: um arredondamento no `tax_engine` que vazava
@@ -90,7 +91,13 @@ dois têm teste de regressão fixando o comportamento.
 
 **Cálculo**
 
-- `POST /api/operations/calcular` — calcula viabilidade de uma operação
+- `POST /api/operations/calcular` — calcula viabilidade de uma operação.
+  Aceita o header opcional `Idempotency-Key`: repetir a requisição com a
+  mesma chave e os mesmos dados (duplo clique, retry de rede) devolve a
+  operação original em vez de gravar uma duplicata, com o header
+  `Idempotent-Replayed: true` na resposta. Reusar a chave com dados
+  diferentes retorna `409`. A chave é escopada por usuário e o hash
+  normalizado do input fica persistido para auditoria.
 - `POST /api/operations/simular` — compara até 10 cenários e aponta o melhor
 - `GET /api/tax-rules` — lista as regras tributárias cadastradas
 
@@ -213,7 +220,7 @@ escrever código contra endpoints possivelmente indisponíveis.
 3. Cadastrar mais combinações de origem/destino/produto — hoje só há
    cobertura para os dois cenários das planilhas fornecidas; qualquer outra
    UF retorna pendência (comportamento esperado, não é bug).
-4. Trocar o SQLite local por Postgres (o schema em Drizzle já é quase
-   idêntico entre `sqlite-core` e `pg-core`) e configurar disco persistente
-   — hoje o histórico de operações não sobrevive a um redeploy.
+4. Consolidar migrations versionadas do Postgres — hoje o schema é criado e
+   atualizado por SQL idempotente no seed, sem histórico versionado de
+   mudanças.
 5. Obter as credenciais Transerve para ativar a integração de transporte.
